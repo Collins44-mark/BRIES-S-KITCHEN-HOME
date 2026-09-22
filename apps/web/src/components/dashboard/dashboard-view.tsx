@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { BarChart3, ShoppingCart, Users, Wallet } from 'lucide-react';
-import { dashboardApi } from '@/lib/services';
+import { getDashboardSummary } from '@/lib/supabase/dashboard';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
 import { KpiCard } from '@/components/ui/kpi-card';
@@ -13,9 +13,9 @@ import { QuickActionsCard } from './quick-actions-card';
 
 export function DashboardView() {
   const { preset, from, to } = useDateRange();
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, refetch, isSuccess } = useQuery({
     queryKey: ['dashboard-summary', preset, from, to],
-    queryFn: () => dashboardApi.summary(preset, from, to),
+    queryFn: () => getDashboardSummary(preset, from, to),
   });
 
   if (isLoading) {
@@ -34,10 +34,10 @@ export function DashboardView() {
     );
   }
 
-  if (isError || !data) {
+  if (isError || (!isSuccess && !data)) {
     return (
       <div className="glass-card p-8 text-center">
-        <p className="text-sm text-slate-600">Unable to load dashboard data.</p>
+        <p className="text-sm text-slate-600">Unable to load dashboard data. Please try again.</p>
         <button
           type="button"
           onClick={() => refetch()}
@@ -49,15 +49,16 @@ export function DashboardView() {
     );
   }
 
+  const summary = data;
   const compareLabel = preset === 'today' ? 'yesterday' : 'previous period';
   const salesHint =
-    data.salesChangePercent === null
+    summary.salesChangePercent === null
       ? undefined
-      : `${data.salesChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(data.salesChangePercent)}% from ${compareLabel}`;
+      : `${summary.salesChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.salesChangePercent)}% from ${compareLabel}`;
   const profitHint =
-    data.profitChangePercent === null
+    summary.profitChangePercent === null
       ? undefined
-      : `${data.profitChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(data.profitChangePercent)}% from ${compareLabel}`;
+      : `${summary.profitChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.profitChangePercent)}% from ${compareLabel}`;
 
   return (
     <div className="space-y-[18px]">
@@ -73,31 +74,35 @@ export function DashboardView() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Total Sales"
-          value={formatTzs(data.totalSales)}
+          value={formatTzs(summary.totalSales)}
           hint={salesHint}
-          hintPositive={data.salesChangePercent !== null ? data.salesChangePercent >= 0 : undefined}
+          hintPositive={
+            summary.salesChangePercent !== null ? summary.salesChangePercent >= 0 : undefined
+          }
           icon={ShoppingCart}
           tone="green"
         />
         <KpiCard
           label="Total Profit"
-          value={formatTzs(data.totalProfit)}
+          value={formatTzs(summary.totalProfit)}
           hint={profitHint}
-          hintPositive={data.profitChangePercent !== null ? data.profitChangePercent >= 0 : undefined}
+          hintPositive={
+            summary.profitChangePercent !== null ? summary.profitChangePercent >= 0 : undefined
+          }
           icon={BarChart3}
           tone="purple"
         />
         <KpiCard
           label="Amount Collected"
-          value={formatTzs(data.amountCollected)}
-          hint={`${data.collectedPercentOfSales}% of sales`}
+          value={formatTzs(summary.amountCollected)}
+          hint={`${summary.collectedPercentOfSales}% of sales`}
           icon={Wallet}
           tone="blue"
         />
         <KpiCard
           label="Outstanding Debts"
-          value={formatTzs(data.outstandingDebts)}
-          hint={`${data.debtorsCount} customers`}
+          value={formatTzs(summary.outstandingDebts)}
+          hint={`${summary.debtorsCount} customers`}
           icon={Users}
           tone="red"
         />
@@ -105,16 +110,16 @@ export function DashboardView() {
 
       <div className="grid gap-[18px] xl:grid-cols-5">
         <div className="xl:col-span-3">
-          <TopSellingProducts items={data.topSellingProducts} />
+          <TopSellingProducts items={summary.topSellingProducts} />
         </div>
         <div className="xl:col-span-2">
-          <PaymentMethodsCard items={data.paymentMethods} />
+          <PaymentMethodsCard items={summary.paymentMethods} />
         </div>
       </div>
 
       <div className="grid gap-[18px] xl:grid-cols-5">
         <div className="xl:col-span-3">
-          <TopDebtorsCard items={data.topDebtors} />
+          <TopDebtorsCard items={summary.topDebtors} />
         </div>
         <div className="xl:col-span-2">
           <QuickActionsCard />

@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { Banknote, Building2, CreditCard, Smartphone } from 'lucide-react';
+import { Banknote, Building2, Smartphone } from 'lucide-react';
 import type { DashboardSummary } from '@bries/types';
 import { GlassIcon } from '@/components/ui/glass-icon';
 import { formatTzs } from '@/lib/utils';
 
-const META = {
-  CASH: { label: 'Cash', icon: Banknote, tone: 'green' as const },
-  MPESA: { label: 'M-Pesa', icon: Smartphone, tone: 'green' as const },
-  BANK: { label: 'Bank', icon: Building2, tone: 'blue' as const },
-  CREDIT: { label: 'Credit', icon: CreditCard, tone: 'red' as const },
+/** Actual payment methods only — CREDIT is never a payment row. */
+const META: Record<
+  'CASH' | 'MPESA' | 'BANK',
+  { label: string; icon: typeof Banknote; tone: 'green' | 'blue' }
+> = {
+  CASH: { label: 'Cash', icon: Banknote, tone: 'green' },
+  MPESA: { label: 'M-Pesa', icon: Smartphone, tone: 'green' },
+  BANK: { label: 'Bank', icon: Building2, tone: 'blue' },
 };
 
 export function PaymentMethodsCard({
@@ -26,23 +29,29 @@ export function PaymentMethodsCard({
           View All →
         </Link>
       </div>
-      <div className="space-y-3">
-        {items.map((item) => {
-          const meta = META[item.method];
-          return (
-            <div key={item.method} className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <GlassIcon icon={meta.icon} tone={meta.tone} className="h-8 w-8 rounded-[10px]" />
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-medium text-slate-800">{meta.label}</p>
-                  <p className="text-[12px] font-semibold text-slate-700">{formatTzs(item.amount)}</p>
+      {items.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">No payments yet</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => {
+            if (item.method === 'CREDIT') return null;
+            const meta = META[item.method];
+            if (!meta) return null;
+            return (
+              <div key={item.method} className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <GlassIcon icon={meta.icon} tone={meta.tone} className="h-8 w-8 rounded-[10px]" />
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-medium text-slate-800">{meta.label}</p>
+                    <p className="text-[12px] font-semibold text-slate-700">{formatTzs(item.amount)}</p>
+                  </div>
                 </div>
+                <span className="shrink-0 text-[13px] font-semibold text-slate-500">{item.percent}%</span>
               </div>
-              <span className="shrink-0 text-[13px] font-semibold text-slate-500">{item.percent}%</span>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

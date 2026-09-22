@@ -4,13 +4,19 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { DiscountType, PaymentMethod, ProductDto } from '@bries/types';
 import { AppShell } from '@/components/layout/app-shell';
-import { categoriesApi, customersApi, productsApi, salesApi } from '@/lib/services';
+import { listCategories } from '@/lib/supabase/categories';
+import { fetchCustomerByPhone, fetchCustomers } from '@/lib/supabase/customers';
+import { listProducts, type ProductListItem } from '@/lib/supabase/products';
+import {
+  createSale,
+  type SaleDiscountType,
+  type SalePaymentMethod,
+} from '@/lib/supabase/sales';
 import { formatTzs } from '@/lib/utils';
 
 interface CartLine {
-  product: ProductDto;
+  product: ProductListItem;
   quantity: number;
 }
 
@@ -29,26 +35,37 @@ function PosView() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerId, setCustomerId] = useState<string>('');
   const [phoneSearch, setPhoneSearch] = useState('');
-  const [discountType, setDiscountType] = useState<DiscountType>('NONE');
+  const [discountType, setDiscountType] = useState<SaleDiscountType>('NONE');
   const [discountValue, setDiscountValue] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>('CASH');
   const [amountTendered, setAmountTendered] = useState('');
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ['products', search, categoryId],
-    queryFn: () => productsApi.list(search || undefined, categoryId || undefined),
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['products', 'pos', search, categoryId],
+    queryFn: () =>
+      listProducts({
+        search: search || undefined,
+        categoryId: categoryId || undefined,
+        status: 'ACTIVE',
+      }),
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => categoriesApi.list(),
+    queryKey: ['categories', 'active'],
+    queryFn: () => listCategories({ includeInactive: false }),
   });
 
   const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => customersApi.list(),
+    queryKey: ['customers', 'pos'],
+    queryFn: () => fetchCustomers({ includeInactive: false, includeWalkIn: false }),
   });
 
+  // UI preview only — create_sale remains authoritative for money totals.
   const subtotal = useMemo(
     () => cart.reduce((sum, line) => sum + Number(line.product.sellingPrice) * line.quantity, 0),
     [cart],
@@ -62,22 +79,25 @@ function PosView() {
 
   const total = Math.max(subtotal - discountAmount, 0);
 
-  const createSale = useMutation({
-    mutationFn: salesApi.create,
-    onSuccess: () => {
-      toast.success('Sale completed');
+  const createSaleMutation = useMutation({
+    mutationFn: createSale,
+    onSuccess: (sale) => {
+      const invoice = sale.invoice_number ? ` — ${sale.invoice_number}` : '';
+      toast.success(`Sale completed${invoice}`);
       setCart([]);
       setDiscountType('NONE');
       setDiscountValue(0);
       setAmountTendered('');
       setCustomerId('');
+      setPhoneSearch('');
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
-    onError: () => toast.error('Failed to complete sale'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to complete sale'),
   });
 
-  function addToCart(product: ProductDto) {
+  function addToCart(product: ProductListItem) {
     if (product.stockQuantity <= 0) {
       toast.error('Out of stock');
       return;
@@ -100,11 +120,11 @@ function PosView() {
   async function findCustomerByPhone() {
     if (!phoneSearch.trim()) return;
     try {
-      const customer = await customersApi.byPhone(phoneSearch.trim());
+      const customer = await fetchCustomerByPhone(phoneSearch.trim());
       setCustomerId(customer.id);
       toast.success(`Selected ${customer.name}`);
-    } catch {
-      toast.error('Customer not found');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Customer not found');
     }
   }
 
@@ -113,22 +133,28 @@ function PosView() {
       toast.error('Cart is empty');
       return;
     }
-    const tendered = amountTendered ? Number(amountTendered) : total;
-    const payments =
-      tendered >= total
-        ? [{ method: paymentMethod, amount: total }]
-        : [
-            { method: paymentMethod, amount: tendered },
-            { method: 'CREDIT' as PaymentMethod, amount: total - tendered },
-          ];
 
+    const tendered = amountTendered === '' ? total : Number(amountTendered);
+    if (Number.isNaN(tendered) || tendered < 0) {
+      toast.error('Enter a valid amount received');
+      return;
+    }
+    if (tendered > total) {
+      toast.error('Payment amount exceeds sale total');
+      return;
+    }
     if (tendered < total && !customerId) {
       toast.error('Credit sales require a registered customer');
       return;
     }
 
-    createSale.mutate({
-      customerId: customerId || undefined,
+    // Money payments only — unpaid remainder becomes amount_due in the RPC.
+    // Do NOT append { method: 'CREDIT', amount: owed }.
+    const payments =
+      tendered > 0 ? [{ method: paymentMethod, amount: tendered }] : [];
+
+    createSaleMutation.mutate({
+      customerId: customerId || null,
       items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
       discountType,
       discountValue,
@@ -162,7 +188,7 @@ function PosView() {
                 className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
               >
                 <option value="">All categories</option>
-                {(categories as Array<{ id: string; name: string }>).map((c) => (
+                {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -176,7 +202,25 @@ function PosView() {
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="glass-card h-36 animate-pulse bg-white/40" />
               ))}
+            {isError && !isLoading && (
+              <div className="glass-card col-span-full p-8 text-center sm:col-span-2 lg:col-span-3">
+                <p className="text-sm text-slate-600">Unable to load products. Please try again.</p>
+                <button
+                  type="button"
+                  onClick={() => refetch()}
+                  className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            {!isLoading && !isError && products.length === 0 && (
+              <p className="col-span-full py-8 text-center text-sm text-slate-400 sm:col-span-2 lg:col-span-3">
+                No products yet
+              </p>
+            )}
             {!isLoading &&
+              !isError &&
               products.map((product) => (
                 <button
                   key={product.id}
@@ -290,7 +334,7 @@ function PosView() {
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={discountType}
-                onChange={(e) => setDiscountType(e.target.value as DiscountType)}
+                onChange={(e) => setDiscountType(e.target.value as SaleDiscountType)}
                 className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
               >
                 <option value="NONE">No discount</option>
@@ -308,7 +352,7 @@ function PosView() {
             </div>
             <select
               value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              onChange={(e) => setPaymentMethod(e.target.value as SalePaymentMethod)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
             >
               <option value="CASH">Cash</option>
@@ -340,10 +384,10 @@ function PosView() {
             <button
               type="button"
               onClick={completeSale}
-              disabled={createSale.isPending || cart.length === 0}
+              disabled={createSaleMutation.isPending || cart.length === 0}
               className="h-12 w-full rounded-2xl bg-brand-navy text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
             >
-              {createSale.isPending ? 'Processing...' : 'Complete Sale'}
+              {createSaleMutation.isPending ? 'Processing...' : 'Complete Sale'}
             </button>
           </div>
         </div>

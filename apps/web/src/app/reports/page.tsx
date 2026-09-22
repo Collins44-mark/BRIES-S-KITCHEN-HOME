@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppShell } from '@/components/layout/app-shell';
-import { reportsApi } from '@/lib/services';
+import { InlineError } from '@/components/ui/query-status';
+import {
+  getDebtsReport,
+  getExpensesReport,
+  getInventoryReport,
+  getPaymentsReport,
+  getProfitReport,
+  getPurchasesReport,
+  getSalesReport,
+} from '@/lib/supabase/reports';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
 
@@ -35,27 +44,28 @@ export default function ReportsPage() {
 }
 
 function ReportsView() {
-  const { preset } = useDateRange();
+  const { preset, from, to } = useDateRange();
   const [tab, setTab] = useState<ReportKey>('sales');
 
   const query = useQuery({
-    queryKey: ['reports', tab, preset],
+    queryKey: ['reports', tab, preset, from, to],
     queryFn: async () => {
+      const filters = { preset, from, to };
       switch (tab) {
         case 'sales':
-          return reportsApi.sales(preset);
+          return getSalesReport(filters);
         case 'profit':
-          return reportsApi.profit(preset);
+          return getProfitReport(filters);
         case 'expenses':
-          return reportsApi.expenses(preset);
+          return getExpensesReport(filters);
         case 'inventory':
-          return reportsApi.inventory();
+          return getInventoryReport();
         case 'debts':
-          return reportsApi.debts();
+          return getDebtsReport();
         case 'payments':
-          return reportsApi.payments(preset);
+          return getPaymentsReport(filters);
         case 'purchases':
-          return reportsApi.purchases(preset);
+          return getPurchasesReport(filters);
       }
     },
   });
@@ -63,7 +73,7 @@ function ReportsView() {
   function exportCsv() {
     const rows = (query.data as { rows?: Array<Record<string, unknown>> })?.rows ?? [];
     if (!rows.length) return;
-    const headers = Object.keys(rows[0]);
+    const headers = Object.keys(rows[0]!);
     const csv = [
       headers.join(','),
       ...rows.map((row) =>
@@ -86,6 +96,11 @@ function ReportsView() {
     costOfGoodsSold?: string;
     rows?: Array<Record<string, unknown>>;
   };
+
+  const rows = data?.rows ?? [];
+  const showTotals =
+    data != null &&
+    (data.total !== undefined || data.revenue !== undefined || data.grossProfit !== undefined);
 
   return (
     <div className="space-y-5">
@@ -122,21 +137,21 @@ function ReportsView() {
         ))}
       </div>
 
-      {(data?.total || data?.grossProfit) && (
+      {showTotals && !query.isLoading && !query.isError && (
         <div className="grid gap-4 sm:grid-cols-3">
-          {data.total && (
+          {data.total !== undefined && (
             <div className="glass-card p-5">
               <p className="text-sm text-slate-500">Total</p>
               <p className="mt-2 text-2xl font-semibold">{formatTzs(data.total)}</p>
             </div>
           )}
-          {data.revenue && (
+          {data.revenue !== undefined && (
             <div className="glass-card p-5">
               <p className="text-sm text-slate-500">Revenue</p>
               <p className="mt-2 text-2xl font-semibold">{formatTzs(data.revenue)}</p>
             </div>
           )}
-          {data.grossProfit && (
+          {data.grossProfit !== undefined && (
             <div className="glass-card p-5">
               <p className="text-sm text-slate-500">Gross Profit</p>
               <p className="mt-2 text-2xl font-semibold text-emerald-600">
@@ -150,21 +165,26 @@ function ReportsView() {
       <div className="glass-card overflow-hidden">
         {query.isLoading ? (
           <p className="px-4 py-10 text-center text-sm text-slate-400">Loading report...</p>
+        ) : query.isError ? (
+          <InlineError onRetry={() => query.refetch()} />
+        ) : rows.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-slate-400">
+            No data available for this period
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
                 <tr>
-                  {data?.rows?.[0] &&
-                    Object.keys(data.rows[0]).map((key) => (
-                      <th key={key} className="px-4 py-3 font-medium">
-                        {key}
-                      </th>
-                    ))}
+                  {Object.keys(rows[0]!).map((key) => (
+                    <th key={key} className="px-4 py-3 font-medium">
+                      {key}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {(data?.rows ?? []).map((row, idx) => (
+                {rows.map((row, idx) => (
                   <tr key={idx} className="border-t border-slate-50">
                     {Object.values(row).map((value, i) => (
                       <td key={i} className="px-4 py-3 text-slate-700">

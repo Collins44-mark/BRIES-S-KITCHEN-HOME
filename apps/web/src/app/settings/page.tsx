@@ -67,7 +67,7 @@ function SettingsView() {
         <div className="border-t border-slate-100 pt-4 text-sm text-slate-500">
           <p>Currency: TZS</p>
           <p>Roles supported: Admin, Manager, Cashier, Inventory Manager</p>
-          <p>Authentication: JWT access + refresh tokens</p>
+          <p>Authentication: Supabase Auth (staff profiles)</p>
         </div>
       </div>
     </div>

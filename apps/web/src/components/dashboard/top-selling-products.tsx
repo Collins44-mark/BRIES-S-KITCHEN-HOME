@@ -14,7 +14,7 @@ export function TopSellingProducts({ items }: { items: DashboardSummary['topSell
         </Link>
       </div>
       {items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">No sales in this period.</p>
+        <p className="py-8 text-center text-sm text-slate-400">No sales yet</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[460px] text-left text-[13px]">

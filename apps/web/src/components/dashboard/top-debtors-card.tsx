@@ -22,7 +22,7 @@ export function TopDebtorsCard({ items }: { items: DashboardSummary['topDebtors'
         </Link>
       </div>
       {items.length === 0 ? (
-        <p className="py-6 text-center text-sm text-slate-400">No outstanding debts.</p>
+        <p className="py-6 text-center text-sm text-slate-400">No outstanding debts</p>
       ) : (
         <div className="space-y-2.5">
           {items.map((debtor, index) => (

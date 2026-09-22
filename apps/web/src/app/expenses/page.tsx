@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
-import { expensesApi } from '@/lib/services';
+import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { createExpense, listExpenses, type ExpenseListItem } from '@/lib/supabase/expenses';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
 
@@ -21,35 +22,68 @@ export default function ExpensesPage() {
 
 function ExpensesView() {
   const params = useSearchParams();
-  const { preset } = useDateRange();
+  const { preset, from, to } = useDateRange();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(params.get('new') === '1');
 
-  const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ['expenses', preset],
-    queryFn: () => expensesApi.list(preset),
+  const {
+    data: expenses = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['expenses', preset, from, to],
+    queryFn: () => listExpenses({ preset, from, to }),
   });
 
-  const createExpense = useMutation({
-    mutationFn: expensesApi.create,
+  const createMutation = useMutation({
+    mutationFn: createExpense,
     onSuccess: () => {
       toast.success('Expense recorded');
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
-    onError: () => toast.error('Failed to record expense'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to record expense'),
   });
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (createMutation.isPending) return;
+
     const fd = new FormData(e.currentTarget);
-    createExpense.mutate({
-      title: String(fd.get('title')),
-      category: String(fd.get('category')),
-      amount: Number(fd.get('amount')),
-      paymentMethod: String(fd.get('paymentMethod') || 'CASH'),
-      description: String(fd.get('description') || '') || undefined,
+    const title = String(fd.get('title') || '').trim();
+    const category = String(fd.get('category') || '').trim();
+    const amount = Number(fd.get('amount'));
+    const paymentMethod = String(fd.get('paymentMethod') || 'CASH') as
+      | 'CASH'
+      | 'MPESA'
+      | 'BANK';
+    const description = String(fd.get('description') || '').trim() || null;
+
+    if (!title) {
+      toast.error('Title is required.');
+      return;
+    }
+    if (!category) {
+      toast.error('Category is required.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Amount must be greater than zero.');
+      return;
+    }
+    if (!['CASH', 'MPESA', 'BANK'].includes(paymentMethod)) {
+      toast.error('Choose a valid payment method.');
+      return;
+    }
+
+    createMutation.mutate({
+      title,
+      category,
+      amount,
+      paymentMethod,
+      description,
     });
   }
 
@@ -71,23 +105,41 @@ function ExpensesView() {
 
       {showForm && (
         <form onSubmit={onCreate} className="glass-card grid gap-3 p-5 md:grid-cols-2">
-          <input name="title" required placeholder="Title" className="field" />
-          <select name="category" required className="field">
+          <input name="title" required placeholder="Title" className="field" disabled={createMutation.isPending} />
+          <select name="category" required className="field" disabled={createMutation.isPending}>
             <option value="Transport">Transport</option>
             <option value="Electricity">Electricity</option>
             <option value="Rent">Rent</option>
             <option value="Salary">Salary</option>
             <option value="Other">Other</option>
           </select>
-          <input name="amount" required type="number" min={0} placeholder="Amount" className="field" />
-          <select name="paymentMethod" className="field">
+          <input
+            name="amount"
+            required
+            type="number"
+            min={0.01}
+            step="0.01"
+            placeholder="Amount"
+            className="field"
+            disabled={createMutation.isPending}
+          />
+          <select name="paymentMethod" className="field" disabled={createMutation.isPending}>
             <option value="CASH">Cash</option>
             <option value="MPESA">M-Pesa</option>
             <option value="BANK">Bank</option>
           </select>
-          <input name="description" placeholder="Description" className="field md:col-span-2" />
-          <button type="submit" className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white md:col-span-2">
-            Save Expense
+          <input
+            name="description"
+            placeholder="Description"
+            className="field md:col-span-2"
+            disabled={createMutation.isPending}
+          />
+          <button
+            type="submit"
+            disabled={createMutation.isPending}
+            className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 md:col-span-2"
+          >
+            {createMutation.isPending ? 'Saving…' : 'Save Expense'}
           </button>
         </form>
       )}
@@ -104,31 +156,24 @@ function ExpensesView() {
             </tr>
           </thead>
           <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                  Loading...
-                </td>
-              </tr>
+            {isLoading && <TableLoadingRow colSpan={5} />}
+            {isError && !isLoading && <TableErrorRow colSpan={5} onRetry={() => refetch()} />}
+            {!isLoading && !isError && expenses.length === 0 && (
+              <TableEmptyRow colSpan={5} message="No expenses yet" />
             )}
-            {(expenses as Array<{
-              id: string;
-              title: string;
-              category: string;
-              amount: string;
-              paymentMethod: string;
-              expenseDate: string;
-            }>).map((e) => (
-              <tr key={e.id} className="border-t border-slate-50">
-                <td className="px-4 py-3 font-medium text-slate-800">{e.title}</td>
-                <td className="px-4 py-3">{e.category}</td>
-                <td className="px-4 py-3">{formatTzs(e.amount)}</td>
-                <td className="px-4 py-3">{e.paymentMethod}</td>
-                <td className="px-4 py-3 text-slate-500">
-                  {new Date(e.expenseDate).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
+            {!isLoading &&
+              !isError &&
+              (expenses as ExpenseListItem[]).map((e) => (
+                <tr key={e.id} className="border-t border-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{e.title}</td>
+                  <td className="px-4 py-3">{e.category}</td>
+                  <td className="px-4 py-3">{formatTzs(e.amount)}</td>
+                  <td className="px-4 py-3">{e.paymentMethod}</td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {new Date(e.expenseDate).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
