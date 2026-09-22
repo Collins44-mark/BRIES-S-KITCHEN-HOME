@@ -30,7 +30,7 @@ export default function LoginForm() {
       await login(emailOrUsername, password);
       router.replace(nextPath);
     } catch {
-      setError('Invalid email/username or password.');
+      setError('Invalid email or password.');
     } finally {
       setSubmitting(false);
     }
