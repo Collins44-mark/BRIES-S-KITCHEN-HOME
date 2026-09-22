@@ -12,11 +12,13 @@ Place your business logo and profile images here.
 
 ## How to replace the logo
 
-1. Export your logo as **PNG** (recommended 256×256 or 512×512, transparent background) or **SVG**.
+1. Export your logo as a real **PNG** (recommended 256×256 or 512×512, transparent background) or **SVG**.
+   - Do not rename a `.jpg`/`.jpeg` to `.png` — the file format must match the extension.
 2. Save it as:
    - `apps/web/public/brand/logo.png` **or**
    - `apps/web/public/brand/logo.svg`
-3. Refresh the app. The UI loads `logo.png` first, then falls back to `logo.svg`.
+3. Optional profile photo: `apps/web/public/brand/avatar.png`
+4. Refresh the app. The UI loads `logo.png` first, then falls back to `logo.svg`.
 
 ## Paths in the app
 

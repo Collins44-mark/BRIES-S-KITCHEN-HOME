@@ -68,10 +68,15 @@ pnpm dev:api   # http://localhost:4000/api  (Swagger: /api/docs)
 pnpm dev:web   # http://localhost:3000
 ```
 
-### Demo login
+### First admin (no demo data)
 
-- **Email:** `collins@mark.local`
-- **Password:** `Admin@12345`
+Set bootstrap credentials in `.env`, then:
+
+```bash
+pnpm db:seed
+```
+
+That clears sales/products/customers/etc. and creates only the admin user, permissions, and a Walk-in customer. Add real inventory and customers from the app.
 
 ## Scripts
 
@@ -83,7 +88,7 @@ pnpm dev:web   # http://localhost:3000
 | `pnpm test` | Run API tests |
 | `pnpm typecheck` | TypeScript checks |
 | `pnpm db:migrate` | Run Prisma migrations |
-| `pnpm db:seed` | Seed demo data |
+| `pnpm db:seed` | Bootstrap admin only (wipes operational data) |
 | `pnpm db:studio` | Open Prisma Studio |
 
 ## Architecture

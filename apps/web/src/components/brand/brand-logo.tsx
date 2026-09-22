@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import { useState } from 'react';
 import { Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** Prefer PNG when present; SVG is the committed default fallback. */
 const LOGO_CANDIDATES = ['/brand/logo.png', '/brand/logo.svg'] as const;
 
 export function BrandLogo({
@@ -40,13 +40,14 @@ export function BrandLogo({
       className={cn('relative shrink-0 overflow-hidden bg-white/10', rounded, className)}
       style={{ width: size, height: size }}
     >
-      <Image
+      {/* Native img avoids Next/Image overlay errors when a candidate file is missing. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt="BRIE'S HOME & KITCHEN"
         width={size}
         height={size}
         className="h-full w-full object-cover"
-        priority
         onError={() => {
           if (index < LOGO_CANDIDATES.length - 1) {
             setIndex((v) => v + 1);
@@ -68,7 +69,8 @@ export function ProfileAvatar({
   size?: number;
   className?: string;
 }) {
-  const [useFile, setUseFile] = useState(true);
+  const [avatarOk, setAvatarOk] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const initials = name
     .split(' ')
     .filter(Boolean)
@@ -76,33 +78,30 @@ export function ProfileAvatar({
     .map((p) => p[0]?.toUpperCase() ?? '')
     .join('');
 
-  if (useFile) {
-    return (
-      <div
-        className={cn('relative shrink-0 overflow-hidden rounded-full bg-slate-800', className)}
-        style={{ width: size, height: size }}
-      >
-        <Image
-          src="/brand/avatar.png"
-          alt={name}
-          width={size}
-          height={size}
-          className="h-full w-full object-cover"
-          onError={() => setUseFile(false)}
-        />
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white',
+        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white',
         className,
       )}
       style={{ width: size, height: size, fontSize: Math.max(10, size * 0.32) }}
     >
-      <span className="font-semibold leading-none">{initials || 'U'}</span>
+      {!avatarFailed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/brand/avatar.png"
+          alt={name}
+          width={size}
+          height={size}
+          className={cn(
+            'absolute inset-0 h-full w-full object-cover',
+            avatarOk ? 'opacity-100' : 'opacity-0',
+          )}
+          onLoad={() => setAvatarOk(true)}
+          onError={() => setAvatarFailed(true)}
+        />
+      )}
+      {!avatarOk && <span className="font-semibold leading-none">{initials || 'U'}</span>}
     </div>
   );
 }

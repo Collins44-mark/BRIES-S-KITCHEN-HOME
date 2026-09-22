@@ -9,8 +9,8 @@ export default function LoginForm() {
   const { login, user, loading } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
-  const [emailOrUsername, setEmailOrUsername] = useState('collins@mark.local');
-  const [password, setPassword] = useState('Admin@12345');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
