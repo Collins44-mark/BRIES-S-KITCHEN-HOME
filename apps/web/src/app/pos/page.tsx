@@ -5,6 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
+import {
+  SaleCompletedModal,
+  type CompletedSaleContext,
+} from '@/components/receipt/sale-completed-modal';
 import { listCategories } from '@/lib/supabase/categories';
 import { fetchCustomerByPhone, fetchCustomers } from '@/lib/supabase/customers';
 import { listProducts, type ProductListItem } from '@/lib/supabase/products';
@@ -39,6 +43,7 @@ function PosView() {
   const [discountValue, setDiscountValue] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>('CASH');
   const [amountTendered, setAmountTendered] = useState('');
+  const [completedSale, setCompletedSale] = useState<CompletedSaleContext | null>(null);
 
   const {
     data: products = [],
@@ -83,6 +88,21 @@ function PosView() {
     mutationFn: createSale,
     onError: (err: Error) => toast.error(err.message || 'Failed to complete sale'),
   });
+
+  function resetPosCart() {
+    setCart([]);
+    setDiscountType('NONE');
+    setDiscountValue(0);
+    setAmountTendered('');
+    setCustomerId('');
+    setPhoneSearch('');
+    setPaymentMethod('CASH');
+  }
+
+  function startNewSale() {
+    setCompletedSale(null);
+    resetPosCart();
+  }
 
   function addToCart(product: ProductListItem) {
     if (product.stockQuantity <= 0) {
@@ -139,6 +159,10 @@ function PosView() {
       Math.round((tendered >= total ? total : tendered) * 100) / 100;
     const changeDue =
       tendered > total ? Math.round((tendered - total) * 100) / 100 : 0;
+    const cashReceivedForReceipt =
+      paymentMethod === 'CASH' && tendered > 0
+        ? String(Math.round(tendered * 100) / 100)
+        : null;
 
     // Money payments only — unpaid remainder becomes amount_due in the RPC.
     // Do NOT append { method: 'CREDIT', amount: owed }.
@@ -155,15 +179,18 @@ function PosView() {
       },
       {
         onSuccess: (sale) => {
-          const invoice = sale.invoice_number ? ` — ${sale.invoice_number}` : '';
-          const changeMsg = changeDue > 0 ? ` · Change ${formatTzs(changeDue)}` : '';
-          toast.success(`Sale completed${invoice}${changeMsg}`);
-          setCart([]);
-          setDiscountType('NONE');
-          setDiscountValue(0);
-          setAmountTendered('');
-          setCustomerId('');
-          setPhoneSearch('');
+          // Keep completed-sale context for receipt; clear cart so cashier cannot double-submit.
+          setCompletedSale({
+            saleId: sale.id,
+            cashReceived: cashReceivedForReceipt,
+            changeDue: changeDue > 0 ? String(changeDue) : null,
+          });
+          resetPosCart();
+          toast.success(
+            sale.invoice_number
+              ? `Sale completed — ${sale.invoice_number}`
+              : 'Sale completed',
+          );
           queryClient.invalidateQueries({ queryKey: ['products'] });
           queryClient.invalidateQueries({ queryKey: ['customers'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
@@ -397,7 +424,7 @@ function PosView() {
             <button
               type="button"
               onClick={completeSale}
-              disabled={createSaleMutation.isPending || cart.length === 0}
+              disabled={createSaleMutation.isPending || cart.length === 0 || Boolean(completedSale)}
               className="h-12 w-full rounded-2xl bg-brand-navy text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
             >
               {createSaleMutation.isPending ? 'Processing...' : 'Complete Sale'}
@@ -405,6 +432,10 @@ function PosView() {
           </div>
         </div>
       </div>
+
+      {completedSale && (
+        <SaleCompletedModal completed={completedSale} onNewSale={startNewSale} />
+      )}
     </div>
   );
 }
