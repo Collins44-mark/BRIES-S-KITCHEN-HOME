@@ -5,7 +5,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
+import { ProductUnitsModal } from '@/components/products/product-units-modal';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { useAuth } from '@/contexts/auth-context';
 import { listCategories } from '@/lib/supabase/categories';
 import {
   createProduct,
@@ -30,11 +32,14 @@ export default function ProductsPage() {
 function ProductsView() {
   const params = useSearchParams();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canManageUnits = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'ALL'>('ALL');
   const [showForm, setShowForm] = useState(params.get('new') === '1');
   const [editing, setEditing] = useState<ProductListItem | null>(null);
+  const [unitsProduct, setUnitsProduct] = useState<ProductListItem | null>(null);
 
   const {
     data: products = [],
@@ -196,6 +201,15 @@ function ProductsView() {
           />
           <input name="unit" placeholder="Unit (pcs)" defaultValue="pcs" className="input" />
           <input name="barcode" placeholder="Barcode" className="input" />
+          <div className="md:col-span-3 rounded-xl border border-slate-100 bg-white/50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Selling Units
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              A default PCS selling unit is created automatically when you save. After create, open
+              Units to add SET, PACK, DOZEN, BOX, CARTON, and wholesale tiers.
+            </p>
+          </div>
           <p className="md:col-span-3 text-xs text-slate-500">
             Stock starts at 0 and is updated through purchases. Cost price after create is updated
             when stock is received.
@@ -272,6 +286,26 @@ function ProductsView() {
             <option value="INACTIVE">INACTIVE</option>
             <option value="DISCONTINUED">DISCONTINUED</option>
           </select>
+          <div className="md:col-span-3 rounded-xl border border-slate-100 bg-white/50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Selling Units
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Configure PCS / SET / PACK / DOZEN / BOX / CARTON conversions, retail prices, and
+                  optional wholesale tiers. Stock stays in base units.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUnitsProduct(editing)}
+                className="rounded-xl border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white"
+              >
+                Manage units
+              </button>
+            </div>
+          </div>
           <div className="flex gap-2 md:col-span-3">
             <button
               type="submit"
@@ -380,6 +414,18 @@ function ProductsView() {
                         >
                           Edit
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setUnitsProduct(p)}
+                          className="text-sm font-medium text-sky-600 hover:text-sky-700"
+                          title={
+                            canManageUnits
+                              ? 'Manage selling units and wholesale tiers'
+                              : 'View selling units'
+                          }
+                        >
+                          Units
+                        </button>
                         {p.status === 'ACTIVE' ? (
                           <button
                             type="button"
@@ -407,6 +453,14 @@ function ProductsView() {
           </table>
         </div>
       </div>
+
+      {unitsProduct && (
+        <ProductUnitsModal
+          productId={unitsProduct.id}
+          productName={unitsProduct.name}
+          onClose={() => setUnitsProduct(null)}
+        />
+      )}
 
       <style jsx global>{`
         .input {

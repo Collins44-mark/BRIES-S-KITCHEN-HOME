@@ -5,6 +5,9 @@ export type SaleDiscountType = 'NONE' | 'PERCENTAGE' | 'FIXED';
 
 export type CreateSaleItemInput = {
   productId: string;
+  /** Required active product_units.id — no PCS fallback on the server. */
+  productUnitId: string;
+  /** Selling-unit quantity (not base stock units). */
   quantity: number;
 };
 
@@ -93,7 +96,12 @@ function mapSaleError(message: string): Error {
     return new Error('Cart is empty.');
   }
   if (/each sale item needs/i.test(raw)) {
-    return new Error('Each cart item needs a valid product and quantity of at least 1.');
+    return new Error(
+      'Each cart item needs a valid product, selling unit, and quantity of at least 1.',
+    );
+  }
+  if (/invalid or inactive selling unit/i.test(raw)) {
+    return new Error('One or more selling units are invalid or inactive.');
   }
   if (/invalid sale payload/i.test(raw)) {
     return new Error('Invalid sale data. Please try again.');
@@ -128,8 +136,15 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
   }
 
   for (const item of input.items) {
-    if (!item.productId || !Number.isInteger(item.quantity) || item.quantity < 1) {
-      throw new Error('Each cart item needs a valid product and quantity of at least 1.');
+    if (
+      !item.productId ||
+      !item.productUnitId ||
+      !Number.isInteger(item.quantity) ||
+      item.quantity < 1
+    ) {
+      throw new Error(
+        'Each cart item needs a valid product, selling unit, and quantity of at least 1.',
+      );
     }
   }
 
@@ -155,6 +170,7 @@ export async function createSale(input: CreateSaleInput): Promise<CreateSaleResu
     customer_id: input.customerId?.trim() || null,
     items: input.items.map((item) => ({
       product_id: item.productId,
+      product_unit_id: item.productUnitId,
       quantity: item.quantity,
     })),
     discount_type: input.discountType ?? 'NONE',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Minus, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +13,12 @@ import { listCategories } from '@/lib/supabase/categories';
 import { fetchCustomerByPhone, fetchCustomers } from '@/lib/supabase/customers';
 import { listProducts, type ProductListItem } from '@/lib/supabase/products';
 import {
+  availableSellingQuantity,
+  listActiveUnitsByProductIds,
+  resolveUnitPricePreview,
+  type ProductUnitListItem,
+} from '@/lib/supabase/product-units';
+import {
   createSale,
   type SaleDiscountType,
   type SalePaymentMethod,
@@ -21,7 +27,21 @@ import { formatTzs } from '@/lib/utils';
 
 interface CartLine {
   product: ProductListItem;
+  productUnit: ProductUnitListItem;
   quantity: number;
+}
+
+function cartKey(productId: string, unitId: string): string {
+  return `${productId}::${unitId}`;
+}
+
+function pickDefaultUnit(units: ProductUnitListItem[]): ProductUnitListItem | null {
+  return (
+    units.find((u) => u.isDefault && u.isActive) ??
+    units.find((u) => u.unitCode === 'PCS') ??
+    units[0] ??
+    null
+  );
 }
 
 export default function PosPage() {
@@ -44,6 +64,8 @@ function PosView() {
   const [paymentMethod, setPaymentMethod] = useState<SalePaymentMethod>('CASH');
   const [amountTendered, setAmountTendered] = useState('');
   const [completedSale, setCompletedSale] = useState<CompletedSaleContext | null>(null);
+  /** Per-product selected selling unit on tiles (before Add). */
+  const [tileUnitId, setTileUnitId] = useState<Record<string, string>>({});
 
   const {
     data: products = [],
@@ -60,6 +82,19 @@ function PosView() {
       }),
   });
 
+  const productIds = useMemo(() => products.map((p) => p.id), [products]);
+
+  const {
+    data: unitsByProduct = {},
+    isLoading: unitsLoading,
+    isError: unitsError,
+    refetch: refetchUnits,
+  } = useQuery({
+    queryKey: ['product-units', 'pos', productIds],
+    queryFn: () => listActiveUnitsByProductIds(productIds),
+    enabled: productIds.length > 0,
+  });
+
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'active'],
     queryFn: () => listCategories({ includeInactive: false }),
@@ -70,9 +105,34 @@ function PosView() {
     queryFn: () => fetchCustomers({ includeInactive: false, includeWalkIn: false }),
   });
 
+  // Seed tile unit selection to each product's default when units load.
+  useEffect(() => {
+    setTileUnitId((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const product of products) {
+        const units = unitsByProduct[product.id] ?? [];
+        if (!units.length) continue;
+        const current = next[product.id];
+        if (!current || !units.some((u) => u.id === current)) {
+          const def = pickDefaultUnit(units);
+          if (def) {
+            next[product.id] = def.id;
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [products, unitsByProduct]);
+
   // UI preview only — create_sale remains authoritative for money totals.
   const subtotal = useMemo(
-    () => cart.reduce((sum, line) => sum + Number(line.product.sellingPrice) * line.quantity, 0),
+    () =>
+      cart.reduce((sum, line) => {
+        const unitPrice = Number(resolveUnitPricePreview(line.productUnit, line.quantity));
+        return sum + unitPrice * line.quantity;
+      }, 0),
     [cart],
   );
 
@@ -104,23 +164,121 @@ function PosView() {
     resetPosCart();
   }
 
-  function addToCart(product: ProductListItem) {
-    if (product.stockQuantity <= 0) {
-      toast.error('Out of stock');
+  function resolveUnitForProduct(
+    product: ProductListItem,
+    preferredUnitId?: string,
+  ): ProductUnitListItem | null {
+    const units = unitsByProduct[product.id] ?? [];
+    if (!units.length) return null;
+    if (preferredUnitId) {
+      const match = units.find((u) => u.id === preferredUnitId);
+      if (match) return match;
+    }
+    return pickDefaultUnit(units);
+  }
+
+  function addToCart(product: ProductListItem, unitOverride?: ProductUnitListItem) {
+    const unit =
+      unitOverride ??
+      resolveUnitForProduct(product, tileUnitId[product.id]);
+    if (!unit) {
+      toast.error('No active selling unit configured for this product');
       return;
     }
+
+    const available = availableSellingQuantity(product.stockQuantity, unit.conversionToBase);
+    if (available < 1) {
+      toast.error('Out of stock for this selling unit');
+      return;
+    }
+
     setCart((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id);
+      const key = cartKey(product.id, unit.id);
+      const existing = prev.find(
+        (l) => cartKey(l.product.id, l.productUnit.id) === key,
+      );
       if (existing) {
-        if (existing.quantity >= product.stockQuantity) {
-          toast.error('Not enough stock');
+        if (existing.quantity >= available) {
+          toast.error(`Not enough stock (${available} ${unit.unitCode} available)`);
           return prev;
         }
         return prev.map((l) =>
-          l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l,
+          cartKey(l.product.id, l.productUnit.id) === key
+            ? { ...l, quantity: l.quantity + 1, product, productUnit: unit }
+            : l,
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, productUnit: unit, quantity: 1 }];
+    });
+  }
+
+  function setLineQuantity(line: CartLine, nextQty: number) {
+    const available = availableSellingQuantity(
+      line.product.stockQuantity,
+      line.productUnit.conversionToBase,
+    );
+    if (nextQty < 1) {
+      setCart((prev) =>
+        prev.filter(
+          (l) =>
+            cartKey(l.product.id, l.productUnit.id) !==
+            cartKey(line.product.id, line.productUnit.id),
+        ),
+      );
+      return;
+    }
+    if (nextQty > available) {
+      toast.error(`Not enough stock (${available} ${line.productUnit.unitCode} available)`);
+      return;
+    }
+    setCart((prev) =>
+      prev.map((l) =>
+        cartKey(l.product.id, l.productUnit.id) ===
+        cartKey(line.product.id, line.productUnit.id)
+          ? { ...l, quantity: nextQty }
+          : l,
+      ),
+    );
+  }
+
+  function changeLineUnit(line: CartLine, nextUnitId: string) {
+    const units = unitsByProduct[line.product.id] ?? [];
+    const nextUnit = units.find((u) => u.id === nextUnitId);
+    if (!nextUnit) return;
+
+    const targetKey = cartKey(line.product.id, nextUnit.id);
+    const sourceKey = cartKey(line.product.id, line.productUnit.id);
+    if (targetKey === sourceKey) return;
+
+    const available = availableSellingQuantity(
+      line.product.stockQuantity,
+      nextUnit.conversionToBase,
+    );
+    if (available < 1) {
+      toast.error('Out of stock for this selling unit');
+      return;
+    }
+
+    setCart((prev) => {
+      const withoutSource = prev.filter(
+        (l) => cartKey(l.product.id, l.productUnit.id) !== sourceKey,
+      );
+      const existingTarget = withoutSource.find(
+        (l) => cartKey(l.product.id, l.productUnit.id) === targetKey,
+      );
+      const qty = Math.min(line.quantity, available);
+      if (existingTarget) {
+        const merged = Math.min(existingTarget.quantity + qty, available);
+        return withoutSource.map((l) =>
+          cartKey(l.product.id, l.productUnit.id) === targetKey
+            ? { ...l, quantity: merged, productUnit: nextUnit }
+            : l,
+        );
+      }
+      return [
+        ...withoutSource,
+        { product: line.product, productUnit: nextUnit, quantity: Math.max(1, qty) },
+      ];
     });
   }
 
@@ -142,6 +300,13 @@ function PosView() {
     }
     if (createSaleMutation.isPending) return;
 
+    for (const line of cart) {
+      if (!line.productUnit?.id) {
+        toast.error('Each cart item needs a selling unit');
+        return;
+      }
+    }
+
     // Walk-in (empty customerId → null) is valid for fully paid sales.
     const tendered = amountTendered === '' ? total : Number(amountTendered);
     if (Number.isNaN(tendered) || tendered < 0) {
@@ -154,7 +319,6 @@ function PosView() {
     }
 
     // Record payment = sale total when tendered covers it (change is cashier-side only).
-    // Revenue must equal the sale total, not cash received above that amount.
     const paidAmount =
       Math.round((tendered >= total ? total : tendered) * 100) / 100;
     const changeDue =
@@ -165,21 +329,23 @@ function PosView() {
         : null;
 
     // Money payments only — unpaid remainder becomes amount_due in the RPC.
-    // Do NOT append { method: 'CREDIT', amount: owed }.
     const payments =
       paidAmount > 0 ? [{ method: paymentMethod, amount: paidAmount }] : [];
 
     createSaleMutation.mutate(
       {
         customerId: customerId.trim() ? customerId : null,
-        items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        items: cart.map((l) => ({
+          productId: l.product.id,
+          productUnitId: l.productUnit.id,
+          quantity: l.quantity,
+        })),
         discountType,
         discountValue,
         payments,
       },
       {
         onSuccess: (sale) => {
-          // Keep completed-sale context for receipt; clear cart so cashier cannot double-submit.
           setCompletedSale({
             saleId: sale.id,
             cashReceived: cashReceivedForReceipt,
@@ -192,6 +358,7 @@ function PosView() {
               : 'Sale completed',
           );
           queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['product-units'] });
           queryClient.invalidateQueries({ queryKey: ['customers'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
           queryClient.invalidateQueries({ queryKey: ['sales'] });
@@ -238,48 +405,101 @@ function PosView() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {isLoading &&
+            {(isLoading || (productIds.length > 0 && unitsLoading)) &&
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="glass-card h-36 animate-pulse bg-white/40" />
               ))}
-            {isError && !isLoading && (
+            {(isError || unitsError) && !isLoading && !unitsLoading && (
               <div className="glass-card col-span-full p-8 text-center sm:col-span-2 lg:col-span-3">
                 <p className="text-sm text-slate-600">Unable to load products. Please try again.</p>
                 <button
                   type="button"
-                  onClick={() => refetch()}
+                  onClick={() => {
+                    void refetch();
+                    void refetchUnits();
+                  }}
                   className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
                 >
                   Retry
                 </button>
               </div>
             )}
-            {!isLoading && !isError && products.length === 0 && (
-              <p className="col-span-full py-8 text-center text-sm text-slate-400 sm:col-span-2 lg:col-span-3">
-                No products yet
-              </p>
-            )}
             {!isLoading &&
+              !unitsLoading &&
               !isError &&
-              products.map((product) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => addToCart(product)}
-                  className="glass-card p-4 text-left transition hover:bg-white/90"
-                >
-                  <p className="font-medium text-slate-800">{product.name}</p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">
-                    {formatTzs(product.sellingPrice)}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Stock: {product.stockQuantity} {product.unit}
-                  </p>
-                  <span className="mt-3 inline-flex rounded-lg bg-brand-navy px-2.5 py-1 text-xs font-medium text-white">
-                    Add
-                  </span>
-                </button>
-              ))}
+              !unitsError &&
+              products.length === 0 && (
+                <p className="col-span-full py-8 text-center text-sm text-slate-400 sm:col-span-2 lg:col-span-3">
+                  No products yet
+                </p>
+              )}
+            {!isLoading &&
+              !unitsLoading &&
+              !isError &&
+              !unitsError &&
+              products.map((product) => {
+                const units = unitsByProduct[product.id] ?? [];
+                const selectedUnit =
+                  resolveUnitForProduct(product, tileUnitId[product.id]) ??
+                  pickDefaultUnit(units);
+                const previewPrice = selectedUnit
+                  ? resolveUnitPricePreview(selectedUnit, 1)
+                  : product.sellingPrice;
+                const available = selectedUnit
+                  ? availableSellingQuantity(product.stockQuantity, selectedUnit.conversionToBase)
+                  : 0;
+
+                return (
+                  <div key={product.id} className="glass-card flex flex-col p-4 text-left">
+                    <p className="font-medium text-slate-800">{product.name}</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                      {formatTzs(previewPrice)}
+                      {selectedUnit ? (
+                        <span className="ml-1 text-xs font-normal text-slate-500">
+                          / {selectedUnit.unitCode}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Stock: {product.stockQuantity} base
+                      {selectedUnit
+                        ? ` · ${available} ${selectedUnit.unitCode} avail.`
+                        : ''}
+                    </p>
+                    {units.length > 0 ? (
+                      <select
+                        value={selectedUnit?.id ?? ''}
+                        onChange={(e) =>
+                          setTileUnitId((prev) => ({
+                            ...prev,
+                            [product.id]: e.target.value,
+                          }))
+                        }
+                        className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white/80 px-2 text-xs"
+                        aria-label={`Selling unit for ${product.name}`}
+                      >
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.unitCode}
+                            {u.unitLabel !== u.unitCode ? ` — ${u.unitLabel}` : ''}
+                            {u.conversionToBase > 1 ? ` (=${u.conversionToBase} base)` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="mt-2 text-xs text-rose-600">No selling units</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => addToCart(product, selectedUnit ?? undefined)}
+                      disabled={!selectedUnit || available < 1}
+                      className="mt-3 inline-flex rounded-lg bg-brand-navy px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
@@ -290,50 +510,74 @@ function PosView() {
               <p className="py-8 text-center text-sm text-slate-400">No items yet.</p>
             ) : (
               <div className="space-y-3">
-                {cart.map((line) => (
-                  <div key={line.product.id} className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-slate-800">{line.product.name}</p>
-                      <p className="text-xs text-slate-500">{formatTzs(line.product.sellingPrice)}</p>
+                {cart.map((line) => {
+                  const key = cartKey(line.product.id, line.productUnit.id);
+                  const unitPrice = resolveUnitPricePreview(line.productUnit, line.quantity);
+                  const lineUnits = unitsByProduct[line.product.id] ?? [line.productUnit];
+                  const baseQty = line.quantity * line.productUnit.conversionToBase;
+                  return (
+                    <div key={key} className="space-y-1.5 border-b border-slate-50 pb-3 last:border-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-slate-800">
+                            {line.product.name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatTzs(unitPrice)} / {line.productUnit.unitCode}
+                            {line.productUnit.conversionToBase > 1
+                              ? ` · ${baseQty} base`
+                              : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="rounded-lg p-1 text-rose-500"
+                          onClick={() =>
+                            setCart((prev) =>
+                              prev.filter(
+                                (l) =>
+                                  cartKey(l.product.id, l.productUnit.id) !== key,
+                              ),
+                            )
+                          }
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={line.productUnit.id}
+                          onChange={(e) => changeLineUnit(line, e.target.value)}
+                          className="h-8 min-w-[5.5rem] rounded-lg border border-slate-200 bg-white/80 px-2 text-xs"
+                        >
+                          {lineUnits.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.unitCode}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 p-1"
+                          onClick={() => setLineQuantity(line, line.quantity - 1)}
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-6 text-center text-sm">{line.quantity}</span>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 p-1"
+                          onClick={() => setLineQuantity(line, line.quantity + 1)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="ml-auto text-xs font-medium text-slate-700">
+                          {formatTzs(Number(unitPrice) * line.quantity)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 p-1"
-                        onClick={() =>
-                          setCart((prev) =>
-                            prev
-                              .map((l) =>
-                                l.product.id === line.product.id
-                                  ? { ...l, quantity: Math.max(1, l.quantity - 1) }
-                                  : l,
-                              )
-                              .filter((l) => l.quantity > 0),
-                          )
-                        }
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="w-6 text-center text-sm">{line.quantity}</span>
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 p-1"
-                        onClick={() => addToCart(line.product)}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg p-1 text-rose-500"
-                        onClick={() =>
-                          setCart((prev) => prev.filter((l) => l.product.id !== line.product.id))
-                        }
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
