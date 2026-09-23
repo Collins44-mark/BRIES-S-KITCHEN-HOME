@@ -81,19 +81,6 @@ function PosView() {
 
   const createSaleMutation = useMutation({
     mutationFn: createSale,
-    onSuccess: (sale) => {
-      const invoice = sale.invoice_number ? ` — ${sale.invoice_number}` : '';
-      toast.success(`Sale completed${invoice}`);
-      setCart([]);
-      setDiscountType('NONE');
-      setDiscountValue(0);
-      setAmountTendered('');
-      setCustomerId('');
-      setPhoneSearch('');
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
-    },
     onError: (err: Error) => toast.error(err.message || 'Failed to complete sale'),
   });
 
@@ -133,33 +120,59 @@ function PosView() {
       toast.error('Cart is empty');
       return;
     }
+    if (createSaleMutation.isPending) return;
 
+    // Walk-in (empty customerId → null) is valid for fully paid sales.
     const tendered = amountTendered === '' ? total : Number(amountTendered);
     if (Number.isNaN(tendered) || tendered < 0) {
       toast.error('Enter a valid amount received');
       return;
     }
-    if (tendered > total) {
-      toast.error('Payment amount exceeds sale total');
+    if (tendered < total && !customerId.trim()) {
+      toast.error('Credit sales require a registered customer. Walk-in is fine for paid sales.');
       return;
     }
-    if (tendered < total && !customerId) {
-      toast.error('Credit sales require a registered customer');
-      return;
-    }
+
+    // Record payment = sale total when tendered covers it (change is cashier-side only).
+    // Revenue must equal the sale total, not cash received above that amount.
+    const paidAmount =
+      Math.round((tendered >= total ? total : tendered) * 100) / 100;
+    const changeDue =
+      tendered > total ? Math.round((tendered - total) * 100) / 100 : 0;
 
     // Money payments only — unpaid remainder becomes amount_due in the RPC.
     // Do NOT append { method: 'CREDIT', amount: owed }.
     const payments =
-      tendered > 0 ? [{ method: paymentMethod, amount: tendered }] : [];
+      paidAmount > 0 ? [{ method: paymentMethod, amount: paidAmount }] : [];
 
-    createSaleMutation.mutate({
-      customerId: customerId || null,
-      items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
-      discountType,
-      discountValue,
-      payments,
-    });
+    createSaleMutation.mutate(
+      {
+        customerId: customerId.trim() ? customerId : null,
+        items: cart.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
+        discountType,
+        discountValue,
+        payments,
+      },
+      {
+        onSuccess: (sale) => {
+          const invoice = sale.invoice_number ? ` — ${sale.invoice_number}` : '';
+          const changeMsg = changeDue > 0 ? ` · Change ${formatTzs(changeDue)}` : '';
+          toast.success(`Sale completed${invoice}${changeMsg}`);
+          setCart([]);
+          setDiscountType('NONE');
+          setDiscountValue(0);
+          setAmountTendered('');
+          setCustomerId('');
+          setPhoneSearch('');
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['customers'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+          queryClient.invalidateQueries({ queryKey: ['sales'] });
+          queryClient.invalidateQueries({ queryKey: ['reports'] });
+          queryClient.invalidateQueries({ queryKey: ['inventory'] });
+        },
+      },
+    );
   }
 
   return (

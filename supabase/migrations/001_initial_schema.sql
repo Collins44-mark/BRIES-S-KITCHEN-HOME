@@ -1038,7 +1038,9 @@ DECLARE
   amount_due numeric(18, 2);
   payment_status public.payment_status;
 
-  line_rec record;
+  -- Must be jsonb (not anonymous record). Assigning jsonb → record raises:
+  -- "input of anonymous composite types is not implemented"
+  line_rec jsonb;
   calc_items jsonb := '[]'::jsonb;
   allocated_discount numeric(18, 2) := 0;
   item_discount numeric(18, 2);

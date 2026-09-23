@@ -98,6 +98,11 @@ function mapSaleError(message: string): Error {
   if (/invalid sale payload/i.test(raw)) {
     return new Error('Invalid sale data. Please try again.');
   }
+  if (/anonymous composite/i.test(raw)) {
+    return new Error(
+      'Unable to complete sale due to a database function error. Ask an admin to apply the latest create_sale fix.',
+    );
+  }
   if (/row-level security|permission|policy/i.test(raw)) {
     return new Error('You do not have permission to complete this sale.');
   }
