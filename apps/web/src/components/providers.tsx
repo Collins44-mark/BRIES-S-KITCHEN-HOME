@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { DateRangeProvider } from '@/contexts/date-range-context';
 import { AuthProvider } from '@/contexts/auth-context';
+import { LocaleProvider } from '@/contexts/locale-context';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -22,7 +23,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthProvider>
-        <DateRangeProvider>{children}</DateRangeProvider>
+        <LocaleProvider>
+          <DateRangeProvider>{children}</DateRangeProvider>
+        </LocaleProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

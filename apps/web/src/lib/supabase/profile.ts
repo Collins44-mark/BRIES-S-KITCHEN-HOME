@@ -96,3 +96,46 @@ export async function fetchCurrentProfile(
 
   return { status: 'ok', profile, authUser: user };
 }
+
+/**
+ * Update the signed-in staff member's own name fields.
+ * Relies on existing profiles_update_own RLS (role / is_active unchanged).
+ */
+export async function updateOwnProfileNames(
+  supabase: SupabaseClient,
+  input: { firstName: string; lastName: string },
+): Promise<StaffProfile> {
+  const first = input.firstName.trim();
+  const last = input.lastName.trim();
+  if (!first || !last) {
+    throw new Error('Full name is required.');
+  }
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error('You must be signed in to update your profile.');
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      first_name: first,
+      last_name: last,
+    })
+    .eq('id', user.id)
+    .select('id, email, username, first_name, last_name, role, is_active')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Failed to update profile.');
+  }
+  if (!data) {
+    throw new Error('Unable to update staff profile.');
+  }
+
+  return mapRow(data as ProfileRow);
+}
