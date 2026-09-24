@@ -252,7 +252,9 @@ export function printSaleReceipt(
   // (or a non-writable handle), so document.write never reaches the visible window.
   const w = window.open('', '_blank', 'width=800,height=900');
   if (!w) {
-    throw new Error('Pop-up blocked. Allow pop-ups to print the receipt.');
+    throw new Error(
+      'Unable to open print window. Please allow pop-ups for this site.',
+    );
   }
 
   const escape = (s: string) =>
@@ -399,22 +401,18 @@ export function printSaleReceipt(
     </div>
     <p class="thanks">Thank you for shopping at BRIE'S HOME &amp; KITCHEN.</p>
   </div>
-  <script>
-    (function () {
-      function doPrint() {
-        window.focus();
-        window.print();
-      }
-      // document.write + close often completes before onload can be assigned;
-      // readyState check avoids a silent no-op print trigger.
-      if (document.readyState === 'complete') {
-        setTimeout(doPrint, 0);
-      } else {
-        window.addEventListener('load', doPrint);
-      }
-    })();
-  </script>
 </body>
 </html>`);
   w.document.close();
+
+  // Trigger print from the opener after write/close. Do not rely only on
+  // window.onload inside the popup — the document may already be complete.
+  // Keep the window open; let the browser print dialog control lifecycle.
+  w.focus();
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      w.focus();
+      w.print();
+    }, 0);
+  });
 }
