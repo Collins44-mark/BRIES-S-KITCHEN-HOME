@@ -157,10 +157,13 @@ export default function LoginForm() {
               </div>
             ) : null}
 
-            <button type="submit" className={styles.submit} disabled={submitting}>
-              <span className={styles.submitLabel}>
-                {submitting ? 'Signing in…' : 'Sign in'}
-              </span>
+            <button
+              type="submit"
+              className={styles.submit}
+              disabled={submitting}
+              aria-busy={submitting}
+            >
+              <span className={styles.submitLabel}>Sign in</span>
               <span className={styles.submitArrow} aria-hidden>
                 <ArrowRight className={styles.arrowIcon} strokeWidth={2.25} />
               </span>

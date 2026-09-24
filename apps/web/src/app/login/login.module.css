@@ -302,6 +302,30 @@
   opacity: 0.7;
 }
 
+/* Keep glass look when browser/password-manager autofill paints the field */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active,
+.input:autofill,
+.input:autofill:hover,
+.input:autofill:focus,
+.input:autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 0;
+  background-color: transparent !important;
+  background-image: none !important;
+  /* Cover Chromium's solid autofill fill with matching translucent glass */
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.1) inset !important;
+  box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.1) inset !important;
+  /* Prevent yellow/white flash on autofill apply */
+  transition: background-color 99999s ease-out 0s;
+  filter: none;
+}
+
 .eyeBtn {
   display: flex;
   height: 40px;
