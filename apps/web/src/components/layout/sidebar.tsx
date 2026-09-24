@@ -76,37 +76,43 @@ export function Sidebar({
   return (
     <div className="fixed inset-0 z-50 flex">
       <div
-        className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-slate-900/15 backdrop-blur-[2px]"
         onClick={() => onOpenChange(false)}
         aria-hidden
       />
       <aside
-        className="relative z-10 flex h-full w-[min(280px,86vw)] flex-col overflow-y-auto border-r border-white/70 bg-white/78 text-slate-800 shadow-[8px_0_40px_rgba(15,23,42,0.08)] backdrop-blur-[28px] saturate-[140%]"
+        className="relative z-10 m-3 flex max-h-[calc(100dvh-1.5rem)] w-[min(290px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[26px] border border-white/80 bg-[rgba(255,255,255,0.78)] text-slate-800 shadow-[0_20px_50px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[28px] saturate-[140%] sm:m-4 sm:max-h-[calc(100dvh-2rem)] sm:w-[min(300px,calc(100vw-2rem))]"
         role="dialog"
         aria-modal="true"
         aria-label="Navigation"
       >
-        <div className="flex items-start gap-3 px-4 pb-4 pt-5">
-          <BrandLogo size={40} className="ring-1 ring-black/5" rounded="rounded-2xl" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[12.5px] font-semibold leading-snug tracking-wide text-slate-900">
-              BRIE&apos;S HOME &amp; KITCHEN
-            </p>
-            <p className="mt-0.5 truncate text-[10.5px] text-slate-500">
-              Quality for a Better Home
-            </p>
-          </div>
+        {/* Branding — logo above full centered name */}
+        <div className="relative shrink-0 px-5 pb-3 pt-5">
           <button
             type="button"
-            className="glass-control flex h-8 w-8 items-center justify-center text-slate-600"
+            className="absolute right-3.5 top-3.5 flex h-8 w-8 items-center justify-center rounded-full border border-white/85 bg-white/55 text-slate-600 shadow-[0_4px_12px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md transition hover:bg-white/75"
             onClick={() => onOpenChange(false)}
             aria-label="Close sidebar"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" strokeWidth={2.25} />
           </button>
+
+          <div className="flex flex-col items-center px-2 text-center">
+            <BrandLogo
+              size={56}
+              className="ring-1 ring-black/5 shadow-[0_6px_18px_rgba(15,23,42,0.1)]"
+              rounded="rounded-full"
+            />
+            <p className="mt-3 max-w-full text-balance text-[13.5px] font-semibold leading-snug tracking-[-0.02em] text-slate-900 sm:text-[14.5px]">
+              BRIE&apos;S HOME &amp; KITCHEN
+            </p>
+            <p className="mt-1 max-w-[15rem] text-[11px] font-medium leading-snug text-slate-500 sm:text-[11.5px]">
+              Quality for a Better Home
+            </p>
+          </div>
         </div>
 
-        <nav className="flex-1 space-y-0.5 px-3 pb-3">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-2 pt-1">
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
@@ -116,30 +122,31 @@ export function Sidebar({
                 href={item.href}
                 onClick={() => onOpenChange(false)}
                 className={cn(
-                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
+                  'group flex min-h-[46px] items-center gap-3 rounded-2xl px-3.5 text-[13.5px] transition-all duration-150',
                   active
-                    ? 'bg-slate-900 text-white shadow-soft'
-                    : 'text-slate-600 hover:bg-white/70 hover:text-slate-900',
+                    ? 'border border-white/15 bg-[rgba(15,23,42,0.88)] text-white shadow-[0_8px_20px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.14)]'
+                    : 'border border-transparent text-slate-600 hover:border-white/60 hover:bg-white/55 hover:text-slate-900',
                 )}
               >
                 <Icon
                   className={cn(
                     'h-[18px] w-[18px] shrink-0',
-                    active ? 'text-white' : 'text-slate-500',
+                    active ? 'text-white' : 'text-slate-500 group-hover:text-slate-700',
                   )}
+                  strokeWidth={1.85}
                 />
-                <span className="truncate font-medium">{item.label}</span>
+                <span className="font-medium tracking-[-0.01em]">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {user && (
-          <div className="mt-auto border-t border-slate-200/60 p-3" ref={profileRef}>
+          <div className="shrink-0 px-3 pb-3 pt-1" ref={profileRef}>
             <button
               type="button"
               onClick={() => setProfileOpen((v) => !v)}
-              className="flex w-full items-center gap-2.5 rounded-2xl border border-white/80 bg-white/55 px-2.5 py-2 text-left shadow-soft backdrop-blur-md transition hover:bg-white/80"
+              className="flex w-full items-center gap-2.5 rounded-[18px] border border-white/80 bg-white/55 px-3 py-2.5 text-left shadow-[0_6px_18px_rgba(15,23,42,0.05),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-md transition hover:bg-white/70"
             >
               <ProfileAvatar name={displayName} size={36} />
               <div className="min-w-0 flex-1">
@@ -148,10 +155,10 @@ export function Sidebar({
               </div>
             </button>
             {profileOpen && (
-              <div className="mt-2 overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-toast backdrop-blur-xl">
+              <div className="mt-2 overflow-hidden rounded-[18px] border border-white/80 bg-white/92 p-1.5 shadow-[0_12px_28px_rgba(15,23,42,0.1)] backdrop-blur-xl">
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50/80"
                   onClick={async () => {
                     await logout();
                     router.push('/login');
