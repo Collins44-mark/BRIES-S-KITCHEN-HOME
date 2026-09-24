@@ -7,6 +7,7 @@ export type InventoryStockStatus = 'OUT_OF_STOCK' | 'LOW_STOCK' | 'IN_STOCK';
 
 export type InventoryMovementType =
   | 'PURCHASE'
+  | 'PURCHASE_REVERSAL'
   | 'SALE'
   | 'RETURN'
   | 'ADJUSTMENT'

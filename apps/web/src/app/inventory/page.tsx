@@ -26,6 +26,7 @@ import { formatTzs } from '@/lib/utils';
 
 const MOVEMENT_TYPE_KEYS: Record<string, string> = {
   PURCHASE: 'inventory.purchase',
+  PURCHASE_REVERSAL: 'inventory.purchaseReversal',
   SALE: 'inventory.sale',
   RETURN: 'inventory.return',
   ADJUSTMENT: 'inventory.adjustment',
@@ -263,6 +264,7 @@ function InventoryView() {
             >
               <option value="ALL">{t('inventory.allTypes')}</option>
               <option value="PURCHASE">{t('inventory.purchase')}</option>
+              <option value="PURCHASE_REVERSAL">{t('inventory.purchaseReversal')}</option>
               <option value="SALE">{t('inventory.sale')}</option>
               <option value="RETURN">{t('inventory.return')}</option>
               <option value="ADJUSTMENT">{t('inventory.adjustment')}</option>

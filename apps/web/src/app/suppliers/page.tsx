@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, Suspense, useState } from 'react';
+import { FormEvent, Suspense, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -11,11 +11,13 @@ import { useLocale } from '@/contexts/locale-context';
 import { statusKey } from '@/lib/i18n/dictionaries';
 import {
   createSupplier,
+  listSupplierPayables,
   listSuppliers,
   setSupplierActive,
   updateSupplier,
   type SupplierListItem,
 } from '@/lib/supabase/suppliers';
+import { formatTzs } from '@/lib/utils';
 
 export default function SuppliersPage() {
   return (
@@ -49,6 +51,16 @@ function SuppliersView() {
         includeInactive,
       }),
   });
+
+  const { data: payables = [] } = useQuery({
+    queryKey: ['supplier-payables'],
+    queryFn: listSupplierPayables,
+  });
+
+  const payableBySupplier = useMemo(() => {
+    const map = new Map(payables.map((p) => [p.supplierId, p]));
+    return map;
+  }, [payables]);
 
   const createMutation = useMutation({
     mutationFn: createSupplier,
@@ -230,31 +242,37 @@ function SuppliersView() {
 
       <div className="glass-card overflow-hidden">
         <div className="table-scroll">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[780px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">{t('common.name')}</th>
               <th className="px-4 py-3">{t('common.phone')}</th>
               <th className="px-4 py-3">{t('suppliers.email')}</th>
               <th className="px-4 py-3">{t('suppliers.address')}</th>
+              <th className="px-4 py-3">{t('suppliers.outstanding')}</th>
               <th className="px-4 py-3">{t('common.status')}</th>
               <th className="px-4 py-3">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <TableLoadingRow colSpan={6} />}
-            {isError && !isLoading && <TableErrorRow colSpan={6} onRetry={() => refetch()} />}
+            {isLoading && <TableLoadingRow colSpan={7} />}
+            {isError && !isLoading && <TableErrorRow colSpan={7} onRetry={() => refetch()} />}
             {!isLoading && !isError && suppliers.length === 0 && (
-              <TableEmptyRow colSpan={6} message={t('suppliers.noSuppliers')} />
+              <TableEmptyRow colSpan={7} message={t('suppliers.noSuppliers')} />
             )}
             {!isLoading &&
               !isError &&
-              suppliers.map((s) => (
+              suppliers.map((s) => {
+                const payable = payableBySupplier.get(s.id);
+                return (
                 <tr key={s.id} className="border-t border-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{s.name}</td>
                   <td className="px-4 py-3 text-slate-500">{s.phone ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{s.email ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{s.address ?? '—'}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {formatTzs(payable?.outstanding ?? '0')}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={
@@ -289,7 +307,8 @@ function SuppliersView() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
           </tbody>
         </table>
         </div>

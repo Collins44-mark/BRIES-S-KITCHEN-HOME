@@ -5,12 +5,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
+import { printPurchaseReceipt } from '@/components/receipt/purchase-receipt';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { useAuth } from '@/contexts/auth-context';
 import { useDateRange } from '@/contexts/date-range-context';
 import { useLocale } from '@/contexts/locale-context';
-import { statusKey } from '@/lib/i18n/dictionaries';
+import { paymentMethodKey, statusKey } from '@/lib/i18n/dictionaries';
+import { downloadPurchaseReceiptPdf } from '@/lib/receipt/download-purchase-receipt-pdf';
+import { toPurchaseReceiptData } from '@/lib/receipt/purchase-types';
 import { listProducts, type ProductListItem } from '@/lib/supabase/products';
 import {
   derivePurchasePaymentStatus,
@@ -18,8 +22,11 @@ import {
   listPurchases,
   moneyRound,
   receivePurchase,
+  recordPurchasePayment,
+  reverseReceivedPurchase,
   type PurchaseDetail,
   type PurchaseListItem,
+  type PurchasePaymentMethod,
   type PurchasePaymentStatus,
   type PurchaseStatus,
 } from '@/lib/supabase/purchases';
@@ -70,6 +77,45 @@ function labelStatus(status: string, t: (key: string) => string) {
   return key ? t(key) : status.replaceAll('_', ' ');
 }
 
+function labelPaymentMethod(method: string, t: (key: string) => string) {
+  const key = paymentMethodKey(method);
+  return key.startsWith('common.') ? t(key) : method;
+}
+
+function buildPurchaseReceipt(
+  purchase: PurchaseDetail,
+  t: (key: string) => string,
+) {
+  return toPurchaseReceiptData({
+    purchase,
+    labels: {
+      documentTitle: t('purchases.receiptTitle'),
+      purchaseReference: t('purchases.purchaseReference'),
+      date: t('common.date'),
+      supplier: t('common.supplier'),
+      statusHeading: t('common.status'),
+      paymentStatusHeading: t('sales.paymentStatus'),
+      items: t('sales.items'),
+      product: t('products.product'),
+      quantity: t('common.quantity'),
+      unit: t('common.unit'),
+      unitCost: t('purchases.unitCost'),
+      lineTotal: t('common.total'),
+      subtotal: t('common.subtotal'),
+      total: t('common.total'),
+      amountPaid: t('purchases.amountPaid'),
+      amountDue: t('purchases.amountDue'),
+      paymentHistory: t('purchases.paymentHistory'),
+      paymentMethod: t('pos.paymentMethod'),
+      cancelledBanner: t('purchases.cancelledBanner'),
+    },
+    statusLabel: labelStatus(purchase.status, t),
+    paymentStatusLabel: labelStatus(purchase.paymentStatus, t),
+    unitLabel: t('common.pcs'),
+    methodLabel: (m) => labelPaymentMethod(m, t),
+  });
+}
+
 function PurchasesView() {
   const { t } = useLocale();
   const { user } = useAuth();
@@ -80,11 +126,29 @@ function PurchasesView() {
   const [paymentStatus, setPaymentStatus] = useState<PurchasePaymentStatus | 'ALL'>('ALL');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [payPurchaseId, setPayPurchaseId] = useState<string | null>(null);
 
   const canReceive =
     user?.role === 'ADMIN' ||
     user?.role === 'MANAGER' ||
     user?.role === 'INVENTORY_MANAGER';
+
+  const canRecordPayment = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
+  function canCancelPurchase(p: Pick<PurchaseListItem, 'status' | 'amountPaid'>): boolean {
+    if (!canReceive) return false;
+    if (p.status !== 'RECEIVED') return false;
+    return Number(p.amountPaid) <= 0;
+  }
+
+  function canPayPurchase(
+    p: Pick<PurchaseListItem, 'status' | 'amountDue'>,
+  ): boolean {
+    if (!canRecordPayment) return false;
+    if (p.status !== 'RECEIVED') return false;
+    return Number(p.amountDue) > 0;
+  }
 
   const {
     data: purchases = [],
@@ -130,17 +194,78 @@ function PurchasesView() {
 
   const receiveMutation = useMutation({
     mutationFn: receivePurchase,
-    onSuccess: (purchase) => {
-      toast.success(t('common.saved'));
+    onSuccess: (result) => {
+      toast.success(`${t('purchases.receivedSuccess')}: ${result.reference}`);
       setShowForm(false);
+      setSelectedId(result.id);
       queryClient.invalidateQueries({ queryKey: ['purchases-history'] });
       queryClient.invalidateQueries({ queryKey: ['purchase-detail'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['supplier-payables'] });
     },
     onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
+
+  async function runPurchasePrint(purchaseId: string) {
+    try {
+      const purchase = await getPurchaseById(purchaseId);
+      printPurchaseReceipt(buildPurchaseReceipt(purchase, t));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.somethingWrong'));
+    }
+  }
+
+  async function runPurchasePdf(purchaseId: string) {
+    try {
+      const purchase = await getPurchaseById(purchaseId);
+      await downloadPurchaseReceiptPdf(buildPurchaseReceipt(purchase, t));
+      toast.success(t('purchases.downloadPdf'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.somethingWrong'));
+    }
+  }
+
+  const reverseMutation = useMutation({
+    mutationFn: reverseReceivedPurchase,
+    onSuccess: () => {
+      toast.success(t('purchases.reversed'));
+      setConfirmCancelId(null);
+      setSelectedId(null);
+      queryClient.invalidateQueries({ queryKey: ['purchases-history'] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['supplier-payables'] });
+    },
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
+  });
+
+  const payMutation = useMutation({
+    mutationFn: recordPurchasePayment,
+    onSuccess: () => {
+      toast.success(t('purchases.paymentRecorded'));
+      setPayPurchaseId(null);
+      queryClient.invalidateQueries({ queryKey: ['purchases-history'] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['supplier-payables'] });
+    },
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
+  });
+
+  const confirmTarget = confirmCancelId
+    ? purchases.find((p) => p.id === confirmCancelId) ??
+      (detail?.id === confirmCancelId ? detail : null)
+    : null;
+
+  const payTarget =
+    payPurchaseId && detail?.id === payPurchaseId
+      ? detail
+      : payPurchaseId
+        ? purchases.find((p) => p.id === payPurchaseId) ?? null
+        : null;
 
   return (
     <div className="space-y-5">
@@ -209,23 +334,25 @@ function PurchasesView() {
 
       <div className="glass-card overflow-hidden">
         <div className="table-scroll">
-          <table className="w-full min-w-[800px] text-left text-sm">
+          <table className="w-full min-w-[880px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">{t('common.reference')}</th>
               <th className="px-4 py-3">{t('common.supplier')}</th>
               <th className="px-4 py-3">{t('common.total')}</th>
               <th className="px-4 py-3">{t('purchases.amountPaid')}</th>
+              <th className="px-4 py-3">{t('purchases.amountDue')}</th>
               <th className="px-4 py-3">{t('common.status')}</th>
               <th className="px-4 py-3">{t('sales.paymentStatus')}</th>
               <th className="px-4 py-3">{t('common.date')}</th>
+              <th className="px-4 py-3 text-right">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <TableLoadingRow colSpan={7} />}
-            {isError && !isLoading && <TableErrorRow colSpan={7} onRetry={() => refetch()} />}
+            {isLoading && <TableLoadingRow colSpan={9} />}
+            {isError && !isLoading && <TableErrorRow colSpan={9} onRetry={() => refetch()} />}
             {!isLoading && !isError && purchases.length === 0 && (
-              <TableEmptyRow colSpan={7} message={t('purchases.noPurchases')} />
+              <TableEmptyRow colSpan={9} message={t('purchases.noPurchases')} />
             )}
             {!isLoading &&
               !isError &&
@@ -239,6 +366,7 @@ function PurchasesView() {
                   <td className="px-4 py-3 text-slate-700">{p.supplierName}</td>
                   <td className="px-4 py-3">{formatTzs(p.totalAmount)}</td>
                   <td className="px-4 py-3">{formatTzs(p.amountPaid)}</td>
+                  <td className="px-4 py-3">{formatTzs(p.amountDue)}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-lg px-2 py-0.5 text-xs font-medium ${statusBadgeClass(p.status)}`}
@@ -255,6 +383,43 @@ function PurchasesView() {
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {new Date(p.purchaseDate).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end">
+                      <RowActionsMenu
+                        actions={[
+                          {
+                            label: t('common.view'),
+                            onClick: () => setSelectedId(p.id),
+                          },
+                          {
+                            label: t('purchases.printPurchase'),
+                            onClick: () => {
+                              void runPurchasePrint(p.id);
+                            },
+                          },
+                          {
+                            label: t('purchases.downloadPdf'),
+                            onClick: () => {
+                              void runPurchasePdf(p.id);
+                            },
+                          },
+                          canPayPurchase(p) && {
+                            label: t('purchases.recordPayment'),
+                            onClick: () => {
+                              setSelectedId(p.id);
+                              setPayPurchaseId(p.id);
+                            },
+                          },
+                          canCancelPurchase(p) && {
+                            label: t('purchases.cancel'),
+                            tone: 'danger' as const,
+                            disabled: reverseMutation.isPending,
+                            onClick: () => setConfirmCancelId(p.id),
+                          },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -273,9 +438,69 @@ function PurchasesView() {
               ? detailErrorObj.message
               : t('common.unableLoad')
           }
+          canCancel={detail ? canCancelPurchase(detail) : false}
+          canRecordPayment={detail ? canPayPurchase(detail) : false}
+          cancelPending={reverseMutation.isPending}
+          onCancelPurchase={() => detail && setConfirmCancelId(detail.id)}
+          onRecordPayment={() => detail && setPayPurchaseId(detail.id)}
           onBack={() => setSelectedId(null)}
           onRetry={() => refetchDetail()}
         />
+      )}
+
+      {payPurchaseId && payTarget ? (
+        <PurchasePaymentModal
+          purchase={payTarget}
+          isPending={payMutation.isPending}
+          onClose={() => setPayPurchaseId(null)}
+          onSubmit={(input) => payMutation.mutate(input)}
+        />
+      ) : null}
+
+      {confirmCancelId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-3 sm:items-center sm:p-4">
+          <div
+            className="glass-card w-full max-w-md overflow-hidden shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="purchase-cancel-title"
+          >
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 id="purchase-cancel-title" className="text-base font-semibold text-slate-900">
+                {t('purchases.cancelConfirmTitle')}
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">{t('purchases.cancelConfirmBody')}</p>
+              {confirmTarget ? (
+                <p className="mt-3 text-sm font-medium text-slate-800">
+                  {confirmTarget.reference}
+                  {' · '}
+                  {formatTzs(confirmTarget.totalAmount)}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 px-5 py-4">
+              <button
+                type="button"
+                className="btn-secondary h-10 px-4 text-sm"
+                disabled={reverseMutation.isPending}
+                onClick={() => setConfirmCancelId(null)}
+              >
+                {t('common.close')}
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-10 items-center rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
+                disabled={reverseMutation.isPending || !confirmCancelId}
+                onClick={() => {
+                  if (!confirmCancelId || reverseMutation.isPending) return;
+                  reverseMutation.mutate(confirmCancelId);
+                }}
+              >
+                {reverseMutation.isPending ? t('common.processing') : t('purchases.cancelConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -294,7 +519,7 @@ function ReceivePurchaseForm({
   onCancel: () => void;
   onSubmit: (input: {
     supplierId: string;
-    reference?: string | null;
+    idempotencyKey: string;
     amountPaid: number;
     previewTotal: number;
     purchaseDate?: string | null;
@@ -303,8 +528,8 @@ function ReceivePurchaseForm({
   }) => void;
 }) {
   const { t } = useLocale();
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [supplierId, setSupplierId] = useState('');
-  const [reference, setReference] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([newLine()]);
@@ -394,7 +619,7 @@ function ReceivePurchaseForm({
 
     onSubmit({
       supplierId,
-      reference: reference.trim() || null,
+      idempotencyKey,
       amountPaid: paid,
       previewTotal: preview.total,
       purchaseDate: purchaseDate ? new Date(purchaseDate).toISOString() : null,
@@ -436,13 +661,6 @@ function ReceivePurchaseForm({
           ))}
         </select>
         <input
-          value={reference}
-          onChange={(e) => setReference(e.target.value)}
-          disabled={isPending}
-          placeholder={t('common.reference')}
-          className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60"
-        />
-        <input
           type="datetime-local"
           value={purchaseDate}
           onChange={(e) => setPurchaseDate(e.target.value)}
@@ -454,9 +672,10 @@ function ReceivePurchaseForm({
           onChange={(e) => setNotes(e.target.value)}
           disabled={isPending}
           placeholder={t('common.notes')}
-          className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60"
+          className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60 md:col-span-2"
         />
       </div>
+      <p className="text-xs text-slate-500">{t('purchases.autoReferenceHint')}</p>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -634,6 +853,11 @@ function PurchaseDetailModal({
   loading,
   error,
   errorMessage,
+  canCancel,
+  canRecordPayment,
+  cancelPending,
+  onCancelPurchase,
+  onRecordPayment,
   onBack,
   onRetry,
 }: {
@@ -641,10 +865,43 @@ function PurchaseDetailModal({
   loading: boolean;
   error: boolean;
   errorMessage: string;
+  canCancel: boolean;
+  canRecordPayment: boolean;
+  cancelPending: boolean;
+  onCancelPurchase: () => void;
+  onRecordPayment: () => void;
   onBack: () => void;
   onRetry: () => void;
 }) {
   const { t } = useLocale();
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [printBusy, setPrintBusy] = useState(false);
+
+  function handlePrint() {
+    if (!detail) return;
+    setPrintBusy(true);
+    try {
+      printPurchaseReceipt(buildPurchaseReceipt(detail, t));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.somethingWrong'));
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
+  async function handlePdf() {
+    if (!detail) return;
+    setPdfBusy(true);
+    try {
+      await downloadPurchaseReceiptPdf(buildPurchaseReceipt(detail, t));
+      toast.success(t('purchases.downloadPdf'));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('common.somethingWrong'));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/30 p-3 sm:items-center sm:p-4">
       <div
@@ -675,14 +932,35 @@ function PurchaseDetailModal({
               </p>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onBack}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label={t('common.close')}
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+            {canRecordPayment ? (
+              <button
+                type="button"
+                onClick={onRecordPayment}
+                className="rounded-xl bg-brand-navy px-3 py-1.5 text-sm font-medium text-white"
+              >
+                {t('purchases.recordPayment')}
+              </button>
+            ) : null}
+            {canCancel ? (
+              <button
+                type="button"
+                disabled={cancelPending}
+                onClick={onCancelPurchase}
+                className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 disabled:opacity-50"
+              >
+                {t('purchases.cancel')}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onBack}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              aria-label={t('common.close')}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto px-4 py-5 sm:px-5">
@@ -806,14 +1084,88 @@ function PurchaseDetailModal({
                     <span>{t('purchases.amountPaid')}</span>
                     <span>{formatTzs(detail.amountPaid)}</span>
                   </div>
+                  <div className="mt-2 flex justify-between font-medium text-slate-800">
+                    <span>{t('purchases.amountDue')}</span>
+                    <span>{formatTzs(detail.amountDue)}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end border-t border-slate-100 pt-4">
+              <div>
+                <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                  {t('purchases.paymentHistory')}
+                </h3>
+                <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white/60">
+                  <table className="w-full min-w-[420px] text-left text-sm">
+                    <thead className="bg-slate-50/80 text-xs uppercase text-slate-400">
+                      <tr>
+                        <th className="px-3 py-2.5 font-medium">{t('common.date')}</th>
+                        <th className="px-3 py-2.5 font-medium">{t('common.amount')}</th>
+                        <th className="px-3 py-2.5 font-medium">{t('pos.paymentMethod')}</th>
+                        <th className="px-3 py-2.5 font-medium">{t('common.reference')}</th>
+                        <th className="px-3 py-2.5 font-medium">{t('purchases.recordedBy')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(detail.payments ?? []).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                            {t('purchases.noPayments')}
+                          </td>
+                        </tr>
+                      ) : (
+                        detail.payments.map((payment) => (
+                          <tr key={payment.id} className="border-t border-slate-50">
+                            <td className="px-3 py-2.5 text-slate-600">
+                              {new Date(payment.paidAt).toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2.5 font-medium text-slate-800">
+                              {formatTzs(payment.amount)}
+                            </td>
+                            <td className="px-3 py-2.5 text-slate-700">
+                              {t(
+                                payment.method === 'MPESA'
+                                  ? 'common.mpesa'
+                                  : payment.method === 'BANK'
+                                    ? 'common.bank'
+                                    : 'common.cash',
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-slate-500">
+                              {payment.reference || '—'}
+                            </td>
+                            <td className="px-3 py-2.5 text-slate-500">
+                              {payment.createdByName}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handlePdf}
+                  disabled={pdfBusy || printBusy}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700 disabled:opacity-60"
+                >
+                  {pdfBusy ? t('common.loading') : t('purchases.downloadPdf')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  disabled={pdfBusy || printBusy}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {printBusy ? t('common.loading') : t('purchases.printPurchase')}
+                </button>
                 <button
                   type="button"
                   onClick={onBack}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   {t('common.back')}
@@ -822,6 +1174,171 @@ function PurchaseDetailModal({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PurchasePaymentModal({
+  purchase,
+  isPending,
+  onClose,
+  onSubmit,
+}: {
+  purchase: Pick<
+    PurchaseListItem,
+    'id' | 'reference' | 'supplierName' | 'totalAmount' | 'amountPaid' | 'amountDue'
+  >;
+  isPending: boolean;
+  onClose: () => void;
+  onSubmit: (input: {
+    purchaseId: string;
+    amount: number;
+    method: PurchasePaymentMethod;
+    idempotencyKey: string;
+    reference?: string | null;
+    notes?: string | null;
+  }) => void;
+}) {
+  const { t } = useLocale();
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const amountDue = Number(purchase.amountDue);
+  const [amount, setAmount] = useState(String(amountDue));
+  const [method, setMethod] = useState<PurchasePaymentMethod>('CASH');
+  const [reference, setReference] = useState('');
+  const [notes, setNotes] = useState('');
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (isPending) return;
+
+    const value = moneyRound(Number(amount));
+    if (!Number.isFinite(value) || value <= 0) {
+      toast.error(t('common.amount'));
+      return;
+    }
+    if (value > amountDue) {
+      toast.error(t('purchases.paymentExceedsDue'));
+      return;
+    }
+
+    onSubmit({
+      purchaseId: purchase.id,
+      amount: value,
+      method,
+      idempotencyKey,
+      reference: reference.trim() || null,
+      notes: notes.trim() || null,
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-3 sm:items-center sm:p-4">
+      <div
+        className="glass-card w-full max-w-md overflow-hidden shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="purchase-payment-title"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-4">
+          <div>
+            <h2 id="purchase-payment-title" className="text-lg font-semibold text-slate-900">
+              {t('purchases.recordPayment')}
+            </h2>
+            <p className="page-subtitle">
+              {purchase.supplierName} · {purchase.reference}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+            aria-label={t('common.close')}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5">
+          <div className="rounded-xl border border-slate-100 bg-white/60 p-3 text-sm">
+            <div className="flex justify-between text-slate-600">
+              <span>{t('common.total')}</span>
+              <span>{formatTzs(purchase.totalAmount)}</span>
+            </div>
+            <div className="mt-1 flex justify-between text-slate-600">
+              <span>{t('purchases.amountPaid')}</span>
+              <span>{formatTzs(purchase.amountPaid)}</span>
+            </div>
+            <div className="mt-1 flex justify-between font-semibold text-slate-900">
+              <span>{t('purchases.remaining')}</span>
+              <span>{formatTzs(purchase.amountDue)}</span>
+            </div>
+          </div>
+
+          <label className="block text-sm">
+            <span className="mb-1.5 block text-slate-600">{t('common.amount')}</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300"
+              required
+            />
+          </label>
+
+          <label className="block text-sm">
+            <span className="mb-1.5 block text-slate-600">{t('pos.paymentMethod')}</span>
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value as PurchasePaymentMethod)}
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+            >
+              <option value="CASH">{t('common.cash')}</option>
+              <option value="MPESA">{t('common.mpesa')}</option>
+              <option value="BANK">{t('common.bank')}</option>
+            </select>
+          </label>
+
+          <label className="block text-sm">
+            <span className="mb-1.5 block text-slate-600">{t('common.reference')}</span>
+            <input
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300"
+            />
+          </label>
+
+          <label className="block text-sm">
+            <span className="mb-1.5 block text-slate-600">{t('common.notes')}</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm outline-none focus:border-sky-300"
+            />
+          </label>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="btn-secondary h-10 px-4 text-sm"
+            >
+              {t('common.close')}
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {isPending ? t('common.processing') : t('purchases.recordPayment')}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

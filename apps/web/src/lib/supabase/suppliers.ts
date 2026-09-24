@@ -179,3 +179,42 @@ export async function setSupplierActive(
 ): Promise<SupplierListItem> {
   return updateSupplier(id, { isActive });
 }
+
+export type SupplierPayableSummary = {
+  supplierId: string;
+  totalPurchases: string;
+  totalPaid: string;
+  outstanding: string;
+};
+
+/**
+ * Derived supplier payables for RECEIVED purchases only (cancelled excluded).
+ */
+export async function listSupplierPayables(): Promise<SupplierPayableSummary[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('purchases')
+    .select('supplier_id, total_amount, amount_paid, status')
+    .eq('status', 'RECEIVED');
+
+  if (error) throw mapSupplierError(error.message);
+
+  const map = new Map<string, { total: number; paid: number }>();
+  for (const row of data ?? []) {
+    const sid = row.supplier_id as string;
+    const cur = map.get(sid) ?? { total: 0, paid: 0 };
+    cur.total += Number(row.total_amount) || 0;
+    cur.paid += Number(row.amount_paid) || 0;
+    map.set(sid, cur);
+  }
+
+  return [...map.entries()].map(([supplierId, v]) => {
+    const outstanding = Math.max(0, Math.round((v.total - v.paid) * 100) / 100);
+    return {
+      supplierId,
+      totalPurchases: v.total.toFixed(2),
+      totalPaid: v.paid.toFixed(2),
+      outstanding: outstanding.toFixed(2),
+    };
+  });
+}
