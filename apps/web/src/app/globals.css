@@ -17,13 +17,16 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
   min-height: 100%;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
+  min-height: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   color: var(--foreground);
   background:
     radial-gradient(1100px 520px at 8% -8%, rgba(147, 197, 253, 0.22), transparent 55%),
@@ -41,9 +44,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+body.mobile-nav-open {
+  overflow: hidden;
+}
+
 @layer utilities {
   .glass-card {
-    border-radius: 20px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.7);
     background: rgba(255, 255, 255, 0.62);
     box-shadow:
@@ -53,14 +60,20 @@ body {
     -webkit-backdrop-filter: blur(20px);
   }
 
+  @media (min-width: 1024px) {
+    .glass-card {
+      border-radius: 20px;
+    }
+  }
+
   .glass-icon {
     display: flex;
-    height: 2.25rem;
-    width: 2.25rem;
+    height: 2rem;
+    width: 2rem;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.75);
     box-shadow:
       0 4px 12px rgba(15, 23, 42, 0.05),
@@ -69,11 +82,85 @@ body {
     -webkit-backdrop-filter: blur(12px);
   }
 
+  @media (min-width: 640px) {
+    .glass-icon {
+      height: 2.25rem;
+      width: 2.25rem;
+      border-radius: 12px;
+    }
+  }
+
   .glass-header {
     border-bottom: 1px solid rgba(255, 255, 255, 0.5);
     background: rgba(244, 246, 249, 0.78);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Contained table scroll — never widen the page viewport */
+  .table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .table-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .table-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.55);
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.25;
+    color: #0f172a;
+  }
+
+  @media (min-width: 640px) {
+    .page-title {
+      font-size: 1.875rem;
+    }
+  }
+
+  .page-subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    color: #64748b;
+  }
+
+  @media (min-width: 640px) {
+    .page-subtitle {
+      font-size: 0.875rem;
+    }
+  }
+
+  .kpi-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 640px) {
+    .kpi-value {
+      font-size: 1.35rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .kpi-value {
+      font-size: 1.65rem;
+      line-height: 1;
+    }
   }
 }

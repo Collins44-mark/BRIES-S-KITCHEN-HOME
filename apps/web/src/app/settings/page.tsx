@@ -19,8 +19,8 @@ function SettingsView() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">Business and account preferences.</p>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Business and account preferences.</p>
       </div>
 
       <div className="glass-card max-w-2xl space-y-4 p-6">

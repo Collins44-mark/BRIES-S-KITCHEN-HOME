@@ -370,17 +370,18 @@ function PosView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24 xl:pb-0">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">POS / Sales</h1>
-        <p className="mt-1 text-sm text-slate-500">Search products, build a cart, and complete the sale.</p>
+        <h1 className="page-title">POS / Sales</h1>
+        <p className="page-subtitle">Search products, build a cart, and complete the sale.</p>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <div className="space-y-4 xl:col-span-7">
-          <div className="glass-card p-4">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
+        {/* Products column */}
+        <div className="min-w-0 space-y-3 sm:space-y-4 xl:col-span-7">
+          <div className="glass-card p-3 sm:p-4">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:gap-3">
+              <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   value={search}
@@ -392,7 +393,7 @@ function PosView() {
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+                className="h-11 w-full shrink-0 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm sm:w-auto sm:min-w-[10rem]"
               >
                 <option value="">All categories</option>
                 {categories.map((c) => (
@@ -404,13 +405,13 @@ function PosView() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
             {(isLoading || (productIds.length > 0 && unitsLoading)) &&
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="glass-card h-36 animate-pulse bg-white/40" />
               ))}
             {(isError || unitsError) && !isLoading && !unitsLoading && (
-              <div className="glass-card col-span-full p-8 text-center sm:col-span-2 lg:col-span-3">
+              <div className="glass-card col-span-2 p-6 text-center lg:col-span-3">
                 <p className="text-sm text-slate-600">Unable to load products. Please try again.</p>
                 <button
                   type="button"
@@ -418,7 +419,7 @@ function PosView() {
                     void refetch();
                     void refetchUnits();
                   }}
-                  className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
+                  className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
                 >
                   Retry
                 </button>
@@ -429,7 +430,7 @@ function PosView() {
               !isError &&
               !unitsError &&
               products.length === 0 && (
-                <p className="col-span-full py-8 text-center text-sm text-slate-400 sm:col-span-2 lg:col-span-3">
+                <p className="col-span-2 py-8 text-center text-sm text-slate-400 lg:col-span-3">
                   No products yet
                 </p>
               )}
@@ -450,20 +451,25 @@ function PosView() {
                   : 0;
 
                 return (
-                  <div key={product.id} className="glass-card flex flex-col p-4 text-left">
-                    <p className="font-medium text-slate-800">{product.name}</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">
-                      {formatTzs(previewPrice)}
+                  <div
+                    key={product.id}
+                    className="glass-card flex min-w-0 flex-col p-2.5 text-left sm:p-3.5"
+                  >
+                    <p className="line-clamp-2 text-[13px] font-medium leading-snug text-slate-800 sm:text-sm">
+                      {product.name}
+                    </p>
+                    <p className="mt-1.5 text-[15px] font-semibold leading-tight text-slate-900 sm:mt-2 sm:text-lg">
+                      <span className="break-words">{formatTzs(previewPrice)}</span>
                       {selectedUnit ? (
-                        <span className="ml-1 text-xs font-normal text-slate-500">
+                        <span className="ml-1 text-[10px] font-normal text-slate-500 sm:text-xs">
                           / {selectedUnit.unitCode}
                         </span>
                       ) : null}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-[10px] leading-snug text-slate-500 sm:text-xs">
                       Stock: {product.stockQuantity} base
                       {selectedUnit
-                        ? ` · ${available} ${selectedUnit.unitCode} avail.`
+                        ? ` · ${available} ${selectedUnit.unitCode}`
                         : ''}
                     </p>
                     {units.length > 0 ? (
@@ -475,7 +481,7 @@ function PosView() {
                             [product.id]: e.target.value,
                           }))
                         }
-                        className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white/80 px-2 text-xs"
+                        className="mt-2 h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-white/80 px-1.5 text-[11px] sm:h-9 sm:px-2 sm:text-xs"
                         aria-label={`Selling unit for ${product.name}`}
                       >
                         {units.map((u) => (
@@ -487,13 +493,13 @@ function PosView() {
                         ))}
                       </select>
                     ) : (
-                      <p className="mt-2 text-xs text-rose-600">No selling units</p>
+                      <p className="mt-2 text-[11px] text-rose-600">No selling units</p>
                     )}
                     <button
                       type="button"
                       onClick={() => addToCart(product, selectedUnit ?? undefined)}
                       disabled={!selectedUnit || available < 1}
-                      className="mt-3 inline-flex rounded-lg bg-brand-navy px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                      className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-navy px-2.5 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:mt-3 sm:min-h-0 sm:py-1.5 sm:font-medium"
                     >
                       Add
                     </button>
@@ -503,11 +509,12 @@ function PosView() {
           </div>
         </div>
 
-        <div className="space-y-4 xl:col-span-5">
-          <div className="glass-card p-5">
-            <h2 className="mb-4 text-base font-semibold text-slate-800">Current Cart</h2>
+        {/* Cart / checkout column */}
+        <div className="min-w-0 space-y-3 sm:space-y-4 xl:col-span-5">
+          <div className="glass-card p-3.5 sm:p-5">
+            <h2 className="mb-3 text-base font-semibold text-slate-800 sm:mb-4">Current Cart</h2>
             {cart.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-400">No items yet.</p>
+              <p className="py-6 text-center text-sm text-slate-400 sm:py-8">No items yet.</p>
             ) : (
               <div className="space-y-3">
                 {cart.map((line) => {
@@ -516,7 +523,10 @@ function PosView() {
                   const lineUnits = unitsByProduct[line.product.id] ?? [line.productUnit];
                   const baseQty = line.quantity * line.productUnit.conversionToBase;
                   return (
-                    <div key={key} className="space-y-1.5 border-b border-slate-50 pb-3 last:border-0">
+                    <div
+                      key={key}
+                      className="space-y-2 border-b border-slate-50 pb-3 last:border-0"
+                    >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-slate-800">
@@ -531,7 +541,7 @@ function PosView() {
                         </div>
                         <button
                           type="button"
-                          className="rounded-lg p-1 text-rose-500"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
                           onClick={() =>
                             setCart((prev) =>
                               prev.filter(
@@ -540,15 +550,16 @@ function PosView() {
                               ),
                             )
                           }
+                          aria-label="Remove item"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <select
                           value={line.productUnit.id}
                           onChange={(e) => changeLineUnit(line, e.target.value)}
-                          className="h-8 min-w-[5.5rem] rounded-lg border border-slate-200 bg-white/80 px-2 text-xs"
+                          className="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white/80 px-2 text-xs sm:h-8 sm:max-w-[7rem] sm:flex-none"
                         >
                           {lineUnits.map((u) => (
                             <option key={u.id} value={u.id}>
@@ -556,22 +567,26 @@ function PosView() {
                             </option>
                           ))}
                         </select>
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-200 p-1"
-                          onClick={() => setLineQuantity(line, line.quantity - 1)}
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-6 text-center text-sm">{line.quantity}</span>
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-200 p-1"
-                          onClick={() => setLineQuantity(line, line.quantity + 1)}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="ml-auto text-xs font-medium text-slate-700">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 sm:h-8 sm:w-8"
+                            onClick={() => setLineQuantity(line, line.quantity - 1)}
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="w-7 text-center text-sm font-medium">{line.quantity}</span>
+                          <button
+                            type="button"
+                            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 sm:h-8 sm:w-8"
+                            onClick={() => setLineQuantity(line, line.quantity + 1)}
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <span className="ml-auto shrink-0 text-xs font-semibold text-slate-700">
                           {formatTzs(Number(unitPrice) * line.quantity)}
                         </span>
                       </div>
@@ -582,7 +597,7 @@ function PosView() {
             )}
           </div>
 
-          <div className="glass-card space-y-3 p-5">
+          <div className="glass-card space-y-3 p-3.5 sm:p-5">
             <h2 className="text-base font-semibold text-slate-800">Customer</h2>
             <select
               value={customerId}
@@ -596,30 +611,30 @@ function PosView() {
                 </option>
               ))}
             </select>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 gap-2">
               <input
                 value={phoneSearch}
                 onChange={(e) => setPhoneSearch(e.target.value)}
                 placeholder="Search by phone 0712345678"
-                className="h-11 flex-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
               />
               <button
                 type="button"
                 onClick={findCustomerByPhone}
-                className="rounded-xl bg-slate-100 px-3 text-sm font-medium"
+                className="h-11 shrink-0 rounded-xl bg-slate-100 px-3 text-sm font-medium"
               >
                 Find
               </button>
             </div>
           </div>
 
-          <div className="glass-card space-y-3 p-5">
+          <div id="pos-checkout" className="glass-card space-y-3 p-3.5 sm:p-5">
             <h2 className="text-base font-semibold text-slate-800">Discount & Payment</h2>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={discountType}
                 onChange={(e) => setDiscountType(e.target.value as SaleDiscountType)}
-                className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+                className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white/80 px-2 text-sm sm:px-3"
               >
                 <option value="NONE">No discount</option>
                 <option value="PERCENTAGE">Percentage %</option>
@@ -630,7 +645,7 @@ function PosView() {
                 min={0}
                 value={discountValue}
                 onChange={(e) => setDiscountValue(Number(e.target.value))}
-                className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+                className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
                 disabled={discountType === 'NONE'}
               />
             </div>
@@ -652,17 +667,17 @@ function PosView() {
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
             />
             <div className="space-y-1 border-t border-slate-100 pt-3 text-sm">
-              <div className="flex justify-between text-slate-500">
+              <div className="flex justify-between gap-2 text-slate-500">
                 <span>Subtotal</span>
-                <span>{formatTzs(subtotal)}</span>
+                <span className="shrink-0">{formatTzs(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-slate-500">
+              <div className="flex justify-between gap-2 text-slate-500">
                 <span>Discount</span>
-                <span>-{formatTzs(discountAmount)}</span>
+                <span className="shrink-0">-{formatTzs(discountAmount)}</span>
               </div>
-              <div className="flex justify-between text-base font-semibold text-slate-900">
+              <div className="flex justify-between gap-2 text-base font-semibold text-slate-900">
                 <span>Total</span>
-                <span>{formatTzs(total)}</span>
+                <span className="shrink-0 break-all text-right">{formatTzs(total)}</span>
               </div>
             </div>
             <button
@@ -674,6 +689,30 @@ function PosView() {
               {createSaleMutation.isPending ? 'Processing...' : 'Complete Sale'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile sticky checkout bar */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/60 bg-white/90 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl xl:hidden">
+        <div className="mx-auto flex max-w-lg items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] text-slate-500">
+              {cart.length === 0
+                ? 'Cart empty'
+                : `${cart.length} ${cart.length === 1 ? 'item' : 'items'}`}
+            </p>
+            <p className="truncate text-base font-semibold text-slate-900">{formatTzs(total)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              document.getElementById('pos-checkout')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            disabled={cart.length === 0}
+            className="h-11 shrink-0 rounded-xl bg-brand-navy px-4 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            Checkout
+          </button>
         </div>
       </div>
 

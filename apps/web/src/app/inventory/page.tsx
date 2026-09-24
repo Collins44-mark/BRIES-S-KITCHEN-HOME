@@ -95,13 +95,13 @@ function InventoryView() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Inventory</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="page-title">Inventory</h1>
+        <p className="page-subtitle">
           Stock levels from products and movement history. Stock changes via sales and purchases.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         {[
           {
             label: 'In Stock',
@@ -124,15 +124,15 @@ function InventoryView() {
             color: 'text-slate-900',
           },
         ].map((card) => (
-          <div key={card.label} className="glass-card p-5">
-            <p className="text-sm text-slate-500">{card.label}</p>
-            <p className={`mt-2 text-2xl font-semibold ${card.color}`}>{card.value}</p>
+          <div key={card.label} className="glass-card p-3 sm:p-4 lg:p-5">
+            <p className="text-[11px] text-slate-500 sm:text-sm">{card.label}</p>
+            <p className={`kpi-value mt-1.5 sm:mt-2 ${card.color}`}>{card.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="glass-card flex flex-col gap-3 p-4 lg:flex-row">
-        <div className="relative flex-1">
+      <div className="glass-card flex flex-col gap-3 p-3 sm:p-4 lg:flex-row">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
@@ -144,7 +144,7 @@ function InventoryView() {
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
-          className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm lg:w-auto"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -156,7 +156,7 @@ function InventoryView() {
         <select
           value={stockStatus}
           onChange={(e) => setStockStatus(e.target.value as InventoryStockStatus | 'ALL')}
-          className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
+          className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm lg:w-auto"
         >
           <option value="ALL">All stock statuses</option>
           <option value="IN_STOCK">In stock</option>
@@ -185,7 +185,7 @@ function InventoryView() {
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="font-semibold text-slate-800">Products</h2>
           </div>
-          <div className="max-h-[480px] overflow-auto">
+          <div className="max-h-[480px] table-scroll">
             <table className="w-full min-w-[480px] text-left text-sm">
               <thead className="sticky top-0 bg-white/90 text-xs uppercase text-slate-400">
                 <tr>
@@ -250,7 +250,7 @@ function InventoryView() {
               <option value="LOSS">Loss</option>
             </select>
           </div>
-          <div className="max-h-[480px] overflow-auto">
+          <div className="max-h-[480px] table-scroll">
             <table className="w-full min-w-[420px] text-left text-sm">
               <thead className="sticky top-0 bg-white/90 text-xs uppercase text-slate-400">
                 <tr>

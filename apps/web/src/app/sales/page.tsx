@@ -86,8 +86,8 @@ function SalesView() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Sales History</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="page-title">Sales History</h1>
+        <p className="page-subtitle">
           Completed sales for {label.toLowerCase()}. Totals come from the database.
         </p>
       </div>
@@ -116,7 +116,8 @@ function SalesView() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full min-w-[800px] text-left text-sm">
+        <div className="table-scroll">
+          <table className="w-full min-w-[800px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">Invoice</th>
@@ -168,6 +169,7 @@ function SalesView() {
               ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {selectedId && (
@@ -235,7 +237,7 @@ function SaleDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/30 p-3 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/30 p-2 sm:items-center sm:p-4">
       <div
         className="glass-card flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden shadow-xl"
         role="dialog"

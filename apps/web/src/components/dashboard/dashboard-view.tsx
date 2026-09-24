@@ -20,13 +20,13 @@ export function DashboardView() {
 
   if (isLoading) {
     return (
-      <div className="space-y-[18px]">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="space-y-4 sm:space-y-[18px]">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="glass-card h-[118px] animate-pulse" />
+            <div key={i} className="glass-card h-[96px] animate-pulse sm:h-[108px] lg:h-[118px]" />
           ))}
         </div>
-        <div className="grid gap-[18px] xl:grid-cols-5">
+        <div className="grid gap-4 lg:gap-[18px] xl:grid-cols-5">
           <div className="glass-card h-64 animate-pulse xl:col-span-3" />
           <div className="glass-card h-64 animate-pulse xl:col-span-2" />
         </div>
@@ -61,17 +61,13 @@ export function DashboardView() {
       : `${summary.profitChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.profitChangePercent)}% from ${compareLabel}`;
 
   return (
-    <div className="space-y-[18px]">
+    <div className="space-y-4 sm:space-y-[18px]">
       <div>
-        <h1 className="text-[28px] font-bold leading-tight tracking-tight text-slate-900">
-          Dashboard
-        </h1>
-        <p className="mt-1 text-[13px] text-slate-500">
-          Here&apos;s your business overview for today.
-        </p>
+        <h1 className="page-title text-[1.65rem] font-bold sm:text-[28px]">Dashboard</h1>
+        <p className="page-subtitle">Here&apos;s your business overview for today.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         <KpiCard
           label="Total Sales"
           value={formatTzs(summary.totalSales)}
@@ -108,20 +104,20 @@ export function DashboardView() {
         />
       </div>
 
-      <div className="grid gap-[18px] xl:grid-cols-5">
-        <div className="xl:col-span-3">
+      <div className="grid gap-4 lg:gap-[18px] xl:grid-cols-5">
+        <div className="min-w-0 xl:col-span-3">
           <TopSellingProducts items={summary.topSellingProducts} />
         </div>
-        <div className="xl:col-span-2">
+        <div className="min-w-0 xl:col-span-2">
           <PaymentMethodsCard items={summary.paymentMethods} />
         </div>
       </div>
 
-      <div className="grid gap-[18px] xl:grid-cols-5">
-        <div className="xl:col-span-3">
+      <div className="grid gap-4 lg:gap-[18px] xl:grid-cols-5">
+        <div className="min-w-0 xl:col-span-3">
           <TopDebtorsCard items={summary.topDebtors} />
         </div>
-        <div className="xl:col-span-2">
+        <div className="min-w-0 xl:col-span-2">
           <QuickActionsCard />
         </div>
       </div>

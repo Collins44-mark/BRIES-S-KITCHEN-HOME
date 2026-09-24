@@ -106,8 +106,8 @@ function ReportsView() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Reports</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="page-title">Reports</h1>
+          <p className="page-subtitle">
             View and export business reports for the selected period.
           </p>
         </div>
@@ -138,23 +138,23 @@ function ReportsView() {
       </div>
 
       {showTotals && !query.isLoading && !query.isError && (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 lg:gap-4">
           {data.total !== undefined && (
-            <div className="glass-card p-5">
-              <p className="text-sm text-slate-500">Total</p>
-              <p className="mt-2 text-2xl font-semibold">{formatTzs(data.total)}</p>
+            <div className="glass-card p-3 sm:p-4 lg:p-5">
+              <p className="text-[11px] text-slate-500 sm:text-sm">Total</p>
+              <p className="kpi-value mt-1.5 sm:mt-2">{formatTzs(data.total)}</p>
             </div>
           )}
           {data.revenue !== undefined && (
-            <div className="glass-card p-5">
-              <p className="text-sm text-slate-500">Revenue</p>
-              <p className="mt-2 text-2xl font-semibold">{formatTzs(data.revenue)}</p>
+            <div className="glass-card p-3 sm:p-4 lg:p-5">
+              <p className="text-[11px] text-slate-500 sm:text-sm">Revenue</p>
+              <p className="kpi-value mt-1.5 sm:mt-2">{formatTzs(data.revenue)}</p>
             </div>
           )}
           {data.grossProfit !== undefined && (
-            <div className="glass-card p-5">
-              <p className="text-sm text-slate-500">Gross Profit</p>
-              <p className="mt-2 text-2xl font-semibold text-emerald-600">
+            <div className="glass-card col-span-2 p-3 sm:col-span-1 sm:p-4 lg:p-5">
+              <p className="text-[11px] text-slate-500 sm:text-sm">Gross Profit</p>
+              <p className="kpi-value mt-1.5 text-emerald-600 sm:mt-2">
                 {formatTzs(data.grossProfit)}
               </p>
             </div>
@@ -172,29 +172,37 @@ function ReportsView() {
             No data available for this period
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
-                <tr>
-                  {Object.keys(rows[0]!).map((key) => (
-                    <th key={key} className="px-4 py-3 font-medium">
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, idx) => (
-                  <tr key={idx} className="border-t border-slate-50">
-                    {Object.values(row).map((value, i) => (
-                      <td key={i} className="px-4 py-3 text-slate-700">
-                        {String(value ?? '—')}
-                      </td>
+          <div className="relative">
+            <p className="border-b border-slate-100 px-4 py-2 text-[11px] text-slate-400 lg:hidden">
+              Swipe sideways to see all columns
+            </p>
+            <div className="table-scroll border-t border-transparent">
+              <table className="w-full min-w-[640px] text-left text-sm lg:min-w-[720px]">
+                <thead className="sticky top-0 z-[1] bg-slate-50/95 text-xs uppercase text-slate-400 backdrop-blur-sm">
+                  <tr>
+                    {Object.keys(rows[0]!).map((key) => (
+                      <th key={key} className="whitespace-nowrap px-3 py-3 font-medium sm:px-4">
+                        {key}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((row, idx) => (
+                    <tr key={idx} className="border-t border-slate-50">
+                      {Object.values(row).map((value, i) => (
+                        <td
+                          key={i}
+                          className="whitespace-nowrap px-3 py-3 text-slate-700 sm:px-4"
+                        >
+                          {String(value ?? '—')}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

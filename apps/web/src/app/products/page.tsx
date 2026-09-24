@@ -146,8 +146,8 @@ function ProductsView() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Products</h1>
-          <p className="mt-1 text-sm text-slate-500">Manage your kitchenware catalog.</p>
+          <h1 className="page-title">Products</h1>
+          <p className="page-subtitle">Manage your kitchenware catalog.</p>
         </div>
         <button
           type="button"
@@ -326,17 +326,17 @@ function ProductsView() {
       )}
 
       <div className="glass-card overflow-hidden">
-        <div className="flex flex-wrap gap-3 border-b border-slate-100 p-4">
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:flex-wrap">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search products..."
-            className="input max-w-md"
+            className="input w-full max-w-full sm:max-w-md"
           />
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="input max-w-[200px]"
+            className="input w-full sm:max-w-[200px]"
           >
             <option value="">All categories</option>
             {categories.map((c) => (
@@ -348,7 +348,7 @@ function ProductsView() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProductStatus | 'ALL')}
-            className="input max-w-[180px]"
+            className="input w-full sm:max-w-[180px]"
           >
             <option value="ALL">Active + inactive</option>
             <option value="ACTIVE">ACTIVE</option>
@@ -356,7 +356,101 @@ function ProductsView() {
             <option value="DISCONTINUED">DISCONTINUED</option>
           </select>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile / tablet card list */}
+        <div className="divide-y divide-slate-50 lg:hidden">
+          {isLoading && (
+            <p className="px-4 py-8 text-center text-sm text-slate-400">Loading…</p>
+          )}
+          {isError && !isLoading && (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-slate-600">Unable to load products.</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {!isLoading && !isError && products.length === 0 && (
+            <p className="px-4 py-8 text-center text-sm text-slate-400">No products yet</p>
+          )}
+          {!isLoading &&
+            !isError &&
+            products.map((p) => (
+              <div key={p.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-800">{p.name}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {p.sku}
+                      {p.categoryName ? ` · ${p.categoryName}` : ''}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatTzs(p.sellingPrice)}
+                    </p>
+                    <p
+                      className={`mt-0.5 text-[11px] font-medium ${
+                        p.stockStatus === 'OUT_OF_STOCK'
+                          ? 'text-rose-600'
+                          : p.stockStatus === 'LOW_STOCK'
+                            ? 'text-amber-600'
+                            : 'text-emerald-600'
+                      }`}
+                    >
+                      {p.stockQuantity} · {p.stockStatus.replaceAll('_', ' ')}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">{p.status}</p>
+                <div className="mt-2.5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditing(p);
+                    }}
+                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUnitsProduct(p)}
+                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
+                  >
+                    Units
+                  </button>
+                  {p.status === 'ACTIVE' ? (
+                    <button
+                      type="button"
+                      disabled={statusMutation.isPending}
+                      onClick={() => statusMutation.mutate({ id: p.id, status: 'INACTIVE' })}
+                      className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
+                    >
+                      Deactivate
+                    </button>
+                  ) : p.status !== 'DISCONTINUED' ? (
+                    <button
+                      type="button"
+                      disabled={statusMutation.isPending}
+                      onClick={() => statusMutation.mutate({ id: p.id, status: 'ACTIVE' })}
+                      className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
+                    >
+                      Activate
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="table-scroll hidden lg:block">
           <table className="w-full min-w-[860px] text-left text-sm">
             <thead className="bg-slate-50/70 text-xs uppercase tracking-wide text-slate-400">
               <tr>

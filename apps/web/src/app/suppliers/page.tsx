@@ -116,8 +116,8 @@ function SuppliersView() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Suppliers</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="page-title">Suppliers</h1>
+          <p className="page-subtitle">
             Manage suppliers used when receiving stock purchases.
           </p>
         </div>
@@ -222,7 +222,8 @@ function SuppliersView() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <div className="table-scroll">
+          <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">Name</th>
@@ -286,6 +287,7 @@ function SuppliersView() {
               ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <style jsx global>{`

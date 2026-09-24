@@ -91,12 +91,12 @@ function CategoriesView() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Categories</h1>
-          <p className="mt-1 text-sm text-slate-500">Organize products into catalog groups.</p>
+        <div className="min-w-0">
+          <h1 className="page-title">Categories</h1>
+          <p className="page-subtitle">Organize products into catalog groups.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"
               checked={showInactive}
@@ -111,7 +111,7 @@ function CategoriesView() {
               setEditing(null);
               setShowForm((v) => !v);
             }}
-            className="rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
+            className="min-h-11 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
           >
             {showForm ? 'Close' : 'Add Category'}
           </button>
@@ -167,7 +167,73 @@ function CategoriesView() {
       )}
 
       <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile / tablet cards */}
+        <div className="divide-y divide-slate-50 lg:hidden">
+          {isLoading && (
+            <p className="px-4 py-8 text-center text-sm text-slate-400">Loading…</p>
+          )}
+          {isError && !isLoading && (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-slate-600">Unable to load categories.</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {!isLoading && !isError && categories.length === 0 && (
+            <p className="px-4 py-8 text-center text-sm text-slate-400">No categories yet</p>
+          )}
+          {!isLoading &&
+            !isError &&
+            categories.map((c) => (
+              <div key={c.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-800">{c.name}</p>
+                    <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">
+                      {c.description ?? '—'}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 text-xs font-medium ${
+                      c.is_active ? 'text-emerald-600' : 'text-slate-400'
+                    }`}
+                  >
+                    {c.is_active ? 'ACTIVE' : 'INACTIVE'}
+                  </span>
+                </div>
+                <div className="mt-2.5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditing(c);
+                    }}
+                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={toggleMutation.isPending}
+                    onClick={() =>
+                      toggleMutation.mutate({ id: c.id, isActive: !c.is_active })
+                    }
+                    className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
+                  >
+                    {c.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="table-scroll hidden lg:block">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="bg-slate-50/70 text-xs uppercase tracking-wide text-slate-400">
               <tr>

@@ -155,9 +155,9 @@ function CustomersView() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Customers</h1>
-          <p className="mt-1 text-sm text-slate-500">Registered customers and account balances.</p>
+        <div className="min-w-0">
+          <h1 className="page-title">Customers</h1>
+          <p className="page-subtitle">Registered customers and account balances.</p>
         </div>
         <button
           type="button"
@@ -165,7 +165,7 @@ function CustomersView() {
             setEditing(null);
             setShowForm((v) => !v);
           }}
-          className="rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
+          className="min-h-11 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
         >
           {showForm && !editing ? 'Close' : 'Add Customer'}
         </button>
@@ -266,14 +266,14 @@ function CustomersView() {
       )}
 
       <div className="glass-card overflow-hidden">
-        <div className="flex flex-wrap items-center gap-4 border-b border-slate-100 p-4">
+        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:flex-wrap sm:items-center">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or phone..."
-            className="field max-w-md"
+            className="field w-full max-w-full sm:max-w-md"
           />
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"
               checked={includeInactive}
@@ -282,7 +282,7 @@ function CustomersView() {
             />
             Show inactive
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"
               checked={includeWalkIn}
@@ -292,7 +292,90 @@ function CustomersView() {
             Show walk-in
           </label>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile card list */}
+        <div className="divide-y divide-slate-50 lg:hidden">
+          {isLoading && (
+            <p className="px-4 py-8 text-center text-sm text-slate-400">Loading…</p>
+          )}
+          {isError && !isLoading && (
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-slate-600">Unable to load customers.</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {!isLoading && !isError && customers.length === 0 && (
+            <p className="px-4 py-8 text-center text-sm text-slate-400">No customers yet</p>
+          )}
+          {!isLoading &&
+            !isError &&
+            customers.map((c) => (
+              <div key={c.id} className="px-4 py-3.5">
+                <button
+                  type="button"
+                  className="w-full text-left"
+                  onClick={() => openLedger(c.id, c.name)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-800">
+                        {c.name}
+                        {c.isWalkIn && (
+                          <span className="ml-2 text-[11px] font-normal text-slate-400">
+                            Walk-in
+                          </span>
+                        )}
+                        {!c.isActive && (
+                          <span className="ml-2 text-[11px] font-normal text-slate-400">
+                            Inactive
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-0.5 text-sm text-slate-500">{c.phone ?? '—'}</p>
+                    </div>
+                    <p className="shrink-0 text-sm font-semibold text-rose-600">
+                      {formatTzs(c.outstandingBalance)}
+                    </p>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+                    <span>Purchases: {formatTzs(c.totalPurchases)}</span>
+                    <span className="text-right">Paid: {formatTzs(c.totalPaid)}</span>
+                  </div>
+                </button>
+                <div className="mt-2.5 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditing(c);
+                    }}
+                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={toggleMutation.isPending}
+                    onClick={() =>
+                      toggleMutation.mutate({ id: c.id, isActive: !c.isActive })
+                    }
+                    className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
+                  >
+                    {c.isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {/* Desktop / large tablet table */}
+        <div className="table-scroll hidden lg:block">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
               <tr>

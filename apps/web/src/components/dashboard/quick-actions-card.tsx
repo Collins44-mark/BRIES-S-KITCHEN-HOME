@@ -32,7 +32,7 @@ const ACTIONS = [
 
 export function QuickActionsCard() {
   return (
-    <section className="glass-card flex h-full flex-col p-[18px]">
+    <section className="glass-card flex h-full flex-col p-3.5 sm:p-[18px]">
       <h3 className="mb-3 text-[15px] font-semibold text-slate-800">Quick Actions</h3>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {ACTIONS.map((action) => {

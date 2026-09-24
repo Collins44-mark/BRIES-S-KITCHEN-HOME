@@ -136,8 +136,8 @@ function PurchasesView() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Purchases</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="page-title">Purchases</h1>
+          <p className="page-subtitle">
             Purchase history for {label.toLowerCase()}. Receive stock from active suppliers.
           </p>
         </div>
@@ -197,7 +197,8 @@ function PurchasesView() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full min-w-[800px] text-left text-sm">
+        <div className="table-scroll">
+          <table className="w-full min-w-[800px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">Reference</th>
@@ -248,6 +249,7 @@ function PurchasesView() {
               ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {selectedId && (
@@ -463,67 +465,89 @@ function ReceivePurchaseForm({
           return (
             <div
               key={line.key}
-              className="grid gap-2 rounded-xl border border-slate-100 bg-white/60 p-3 md:grid-cols-12"
+              className="flex flex-col gap-2.5 rounded-xl border border-slate-100 bg-white/60 p-3 md:grid md:grid-cols-12 md:gap-2"
             >
-              <select
-                value={line.productId}
-                onChange={(e) => {
-                  const productId = e.target.value;
-                  const product = products.find((p) => p.id === productId);
-                  updateLine(line.key, {
-                    productId,
-                    unitCost:
-                      line.unitCost === '' && product
-                        ? String(Number(product.costPrice))
-                        : line.unitCost,
-                  });
-                }}
-                required
-                disabled={isPending}
-                className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm md:col-span-5 disabled:opacity-60"
-              >
-                <option value="">Product</option>
-                {products.map((p) => (
-                  <option
-                    key={p.id}
-                    value={p.id}
-                    disabled={selectedProductIds.has(p.id) && p.id !== line.productId}
-                  >
-                    {p.name} (stock {p.stockQuantity})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={line.quantity}
-                onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
-                disabled={isPending}
-                placeholder="Qty"
-                required
-                className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm md:col-span-2 disabled:opacity-60"
-              />
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={line.unitCost}
-                onChange={(e) => updateLine(line.key, { unitCost: e.target.value })}
-                disabled={isPending}
-                placeholder="Unit cost"
-                required
-                className="h-11 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm md:col-span-2 disabled:opacity-60"
-              />
-              <div className="flex items-center justify-between gap-2 md:col-span-3">
-                <span className="text-sm font-medium text-slate-800">
-                  {formatTzs(parsed?.lineTotal ?? 0)}
-                </span>
+              <div className="min-w-0 md:col-span-5">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-400 md:hidden">
+                  Product
+                </label>
+                <select
+                  value={line.productId}
+                  onChange={(e) => {
+                    const productId = e.target.value;
+                    const product = products.find((p) => p.id === productId);
+                    updateLine(line.key, {
+                      productId,
+                      unitCost:
+                        line.unitCost === '' && product
+                          ? String(Number(product.costPrice))
+                          : line.unitCost,
+                    });
+                  }}
+                  required
+                  disabled={isPending}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60"
+                >
+                  <option value="">Product</option>
+                  {products.map((p) => (
+                    <option
+                      key={p.id}
+                      value={p.id}
+                      disabled={selectedProductIds.has(p.id) && p.id !== line.productId}
+                    >
+                      {p.name} (stock {p.stockQuantity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2 md:contents">
+                <div className="min-w-0 md:col-span-2">
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-400 md:hidden">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={line.quantity}
+                    onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
+                    disabled={isPending}
+                    placeholder="Qty"
+                    required
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60"
+                  />
+                </div>
+                <div className="min-w-0 md:col-span-2">
+                  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-400 md:hidden">
+                    Unit cost
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={line.unitCost}
+                    onChange={(e) => updateLine(line.key, { unitCost: e.target.value })}
+                    disabled={isPending}
+                    placeholder="Unit cost"
+                    required
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2 md:col-span-3 md:border-0 md:pt-0">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400 md:hidden">
+                    Subtotal
+                  </p>
+                  <span className="text-sm font-semibold text-slate-800">
+                    {formatTzs(parsed?.lineTotal ?? 0)}
+                  </span>
+                </div>
                 <button
                   type="button"
                   disabled={isPending || lines.length === 1}
                   onClick={() => setLines((prev) => prev.filter((l) => l.key !== line.key))}
-                  className="rounded-lg p-2 text-rose-500 hover:bg-rose-50 disabled:opacity-40"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 disabled:opacity-40"
                   aria-label="Remove line"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -633,7 +657,7 @@ function PurchaseDetailModal({
               {detail?.reference ?? (loading ? 'Loading purchase…' : 'Purchase detail')}
             </h2>
             {detail ? (
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="page-subtitle">
                 {detail.supplierName} · {new Date(detail.purchaseDate).toLocaleString()}
               </p>
             ) : null}

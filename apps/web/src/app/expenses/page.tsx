@@ -91,8 +91,8 @@ function ExpensesView() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Expenses</h1>
-          <p className="mt-1 text-sm text-slate-500">Track operating costs for the selected period.</p>
+          <h1 className="page-title">Expenses</h1>
+          <p className="page-subtitle">Track operating costs for the selected period.</p>
         </div>
         <button
           type="button"
@@ -145,7 +145,8 @@ function ExpensesView() {
       )}
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="table-scroll">
+          <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">Title</th>
@@ -176,6 +177,7 @@ function ExpensesView() {
               ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <style jsx global>{`

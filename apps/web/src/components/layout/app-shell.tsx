@@ -25,6 +25,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    document.body.classList.toggle('mobile-nav-open', mobileOpen);
+    return () => document.body.classList.remove('mobile-nav-open');
+  }, [mobileOpen]);
+
   function toggleSidebar() {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setMobileOpen((open) => !open);
@@ -42,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen max-w-[100vw] overflow-x-clip">
       <Sidebar
         collapsed={collapsed}
         onCollapsedChange={setCollapsed}
@@ -52,7 +57,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div
         className={cn(
-          'relative flex min-h-screen flex-col transition-[margin] duration-300',
+          'relative flex min-h-screen max-w-full flex-col transition-[margin] duration-300',
           collapsed ? 'lg:ml-[84px]' : 'lg:ml-[250px]',
         )}
       >
@@ -62,10 +67,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {pathname.startsWith('/dashboard') && <WelcomeToast />}
 
-        <main className="flex-1 px-5 pb-6 pt-4 lg:px-6">{children}</main>
+        <main className="min-w-0 flex-1 px-4 pb-6 pt-4 sm:px-5 lg:px-6">{children}</main>
 
-        <footer className="flex flex-wrap items-center justify-between gap-2 px-5 pb-4 text-[11px] text-slate-400 lg:px-6">
-          <span>© 2026 BRIE&apos;S HOME &amp; KITCHEN. All rights reserved.</span>
+        <footer className="flex flex-col gap-1 px-4 pb-4 text-[11px] text-slate-400 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:px-5 lg:px-6">
+          <span className="break-words">
+            © 2026 BRIE&apos;S HOME &amp; KITCHEN. All rights reserved.
+          </span>
           <span>Better Homes. Better Living.</span>
         </footer>
       </div>

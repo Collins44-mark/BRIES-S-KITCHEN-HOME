@@ -74,22 +74,22 @@ function DebtsView() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Debts / Credit</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="page-title">Debts / Credit</h1>
+        <p className="page-subtitle">
           Outstanding customer balances and debt repayments.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="glass-card p-5">
-          <p className="text-sm text-slate-500">Total Outstanding</p>
-          <p className="mt-2 text-3xl font-semibold text-rose-600">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
+        <div className="glass-card p-3 sm:p-4 lg:p-5">
+          <p className="text-[11px] text-slate-500 sm:text-sm">Total Outstanding</p>
+          <p className="kpi-value mt-1.5 text-rose-600 sm:mt-2">
             {isLoading ? '—' : formatTzs(data?.totalOutstanding ?? '0')}
           </p>
         </div>
-        <div className="glass-card p-5">
-          <p className="text-sm text-slate-500">Debtors</p>
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
+        <div className="glass-card p-3 sm:p-4 lg:p-5">
+          <p className="text-[11px] text-slate-500 sm:text-sm">Debtors</p>
+          <p className="kpi-value mt-1.5 text-slate-900 sm:mt-2">
             {isLoading ? '—' : (data?.debtorsCount ?? 0)}
           </p>
         </div>
@@ -123,7 +123,8 @@ function DebtsView() {
       )}
 
       <div className="glass-card overflow-hidden">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="table-scroll">
+          <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">#</th>
@@ -160,6 +161,7 @@ function DebtsView() {
               ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {selectedId && (
@@ -235,7 +237,7 @@ function DebtDetailModal({
             <h2 id="debt-detail-title" className="truncate text-lg font-semibold text-slate-900">
               {detail?.name ?? (loading ? 'Loading…' : 'Debtor details')}
             </h2>
-            {detail?.phone ? <p className="mt-1 text-sm text-slate-500">{detail.phone}</p> : null}
+            {detail?.phone ? <p className="page-subtitle">{detail.phone}</p> : null}
           </div>
           <button
             type="button"
@@ -487,7 +489,7 @@ function DebtPaymentModal({
             <h2 id="debt-payment-title" className="text-lg font-semibold text-slate-900">
               Record payment
             </h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="page-subtitle">
               {customerName} · {sale.invoiceNumber}
             </p>
           </div>
