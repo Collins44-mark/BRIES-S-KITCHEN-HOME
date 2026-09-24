@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -16,13 +17,12 @@ import {
   Users,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight,
+  LogOut,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
-import { BrandLogo } from '@/components/brand/brand-logo';
+import { BrandLogo, ProfileAvatar } from '@/components/brand/brand-logo';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,147 +41,130 @@ const NAV = [
 ];
 
 export function Sidebar({
-  collapsed,
-  onCollapsedChange,
-  mobileOpen,
-  onMobileOpenChange,
+  open,
+  onOpenChange,
 }: {
-  collapsed: boolean;
-  onCollapsedChange: (collapsed: boolean) => void;
-  mobileOpen: boolean;
-  onMobileOpenChange: (open: boolean) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
-  const content = (
-    <aside
-      className={cn(
-        'flex h-full flex-col overflow-y-auto bg-sidebar text-sidebar-foreground transition-all duration-300',
-        collapsed ? 'w-[84px]' : 'w-[250px]',
-      )}
-    >
-      <div className={cn('flex items-start gap-3 px-4 pb-5 pt-6', collapsed && 'justify-center px-3')}>
-        <BrandLogo size={40} className="ring-1 ring-white/10" />
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="truncate text-[12.5px] font-semibold leading-snug tracking-wide text-white">
+  useEffect(() => {
+    if (!open) setProfileOpen(false);
+  }, [open]);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'User';
+  const roleLabel =
+    user?.role === 'ADMIN' ? 'Administrator' : user?.role.replaceAll('_', ' ') ?? '';
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div
+        className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px]"
+        onClick={() => onOpenChange(false)}
+        aria-hidden
+      />
+      <aside
+        className="relative z-10 flex h-full w-[min(280px,86vw)] flex-col overflow-y-auto border-r border-white/70 bg-white/78 text-slate-800 shadow-[8px_0_40px_rgba(15,23,42,0.08)] backdrop-blur-[28px] saturate-[140%]"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+      >
+        <div className="flex items-start gap-3 px-4 pb-4 pt-5">
+          <BrandLogo size={40} className="ring-1 ring-black/5" rounded="rounded-2xl" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-semibold leading-snug tracking-wide text-slate-900">
               BRIE&apos;S HOME &amp; KITCHEN
             </p>
-            <p className="mt-0.5 truncate text-[10.5px] text-sidebar-muted">
+            <p className="mt-0.5 truncate text-[10.5px] text-slate-500">
               Quality for a Better Home
             </p>
           </div>
-        )}
-      </div>
+          <button
+            type="button"
+            className="glass-control flex h-8 w-8 items-center justify-center text-slate-600"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close sidebar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-      <nav className="flex-1 space-y-1 px-3">
-        {NAV.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => onMobileOpenChange(false)}
-              className={cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
-                active
-                  ? 'bg-sidebar-active text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.25)]'
-                  : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-white',
-                collapsed && 'justify-center px-2',
-              )}
-              title={collapsed ? item.label : undefined}
+        <nav className="flex-1 space-y-0.5 px-3 pb-3">
+          {NAV.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => onOpenChange(false)}
+                className={cn(
+                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
+                  active
+                    ? 'bg-slate-900 text-white shadow-soft'
+                    : 'text-slate-600 hover:bg-white/70 hover:text-slate-900',
+                )}
+              >
+                <Icon
+                  className={cn(
+                    'h-[18px] w-[18px] shrink-0',
+                    active ? 'text-white' : 'text-slate-500',
+                  )}
+                />
+                <span className="truncate font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {user && (
+          <div className="mt-auto border-t border-slate-200/60 p-3" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => setProfileOpen((v) => !v)}
+              className="flex w-full items-center gap-2.5 rounded-2xl border border-white/80 bg-white/55 px-2.5 py-2 text-left shadow-soft backdrop-blur-md transition hover:bg-white/80"
             >
-              <Icon className={cn('h-[18px] w-[18px] shrink-0', active && 'text-sky-300')} />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="mt-auto border-t border-white/10 p-4">
-        {!collapsed && user && (
-          <div className="mb-3 px-1">
-            <p className="truncate text-xs font-medium text-white">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="truncate text-[11px] text-sidebar-muted">{user.role.replace('_', ' ')}</p>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => onCollapsedChange(!collapsed)}
-          className="hidden w-full items-center justify-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs text-sidebar-muted transition hover:bg-white/10 hover:text-white lg:flex"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          {!collapsed && <span>Collapse</span>}
-        </button>
-      </div>
-    </aside>
-  );
-
-  return (
-    <>
-      <div
-        className={cn(
-          'fixed left-0 top-0 z-40 hidden h-screen lg:block',
-          collapsed ? 'w-[84px]' : 'w-[250px]',
-        )}
-      >
-        {content}
-      </div>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => onMobileOpenChange(false)} />
-          <div className="relative z-10 h-full shadow-2xl">
-            <aside className="flex h-full w-[250px] flex-col overflow-y-auto bg-sidebar text-sidebar-foreground">
-              <div className="flex items-start gap-3 px-4 pb-5 pt-6">
-                <BrandLogo size={40} className="ring-1 ring-white/10" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-semibold leading-snug tracking-wide text-white">
-                    BRIE&apos;S HOME &amp; KITCHEN
-                  </p>
-                  <p className="mt-0.5 truncate text-[10.5px] text-sidebar-muted">
-                    Quality for a Better Home
-                  </p>
-                </div>
+              <ProfileAvatar name={displayName} size={36} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold text-slate-900">{displayName}</p>
+                <p className="truncate text-[11px] text-slate-500">{roleLabel}</p>
+              </div>
+            </button>
+            {profileOpen && (
+              <div className="mt-2 overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-1.5 shadow-toast backdrop-blur-xl">
                 <button
                   type="button"
-                  className="rounded-lg bg-white/10 p-1.5 text-white"
-                  onClick={() => onMobileOpenChange(false)}
-                  aria-label="Close sidebar"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-rose-600 hover:bg-rose-50"
+                  onClick={async () => {
+                    await logout();
+                    router.push('/login');
+                  }}
                 >
-                  <X className="h-4 w-4" />
+                  <LogOut className="h-4 w-4" />
+                  Sign out
                 </button>
               </div>
-              <nav className="flex-1 space-y-1 px-3">
-                {NAV.map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => onMobileOpenChange(false)}
-                      className={cn(
-                        'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
-                        active
-                          ? 'bg-sidebar-active text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.25)]'
-                          : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-white',
-                      )}
-                    >
-                      <Icon className={cn('h-[18px] w-[18px] shrink-0', active && 'text-sky-300')} />
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-            </aside>
+            )}
           </div>
-        </div>
-      )}
-    </>
+        )}
+      </aside>
+    </div>
   );
 }

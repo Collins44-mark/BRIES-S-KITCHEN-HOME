@@ -6,28 +6,29 @@ module.exports = {
     extend: {
       colors: {
         sidebar: {
-          DEFAULT: '#1c1f26',
-          foreground: '#f5f5f7',
-          muted: '#8e9299',
-          hover: '#2a2e38',
-          active: '#2f3542',
+          DEFAULT: 'rgba(255,255,255,0.78)',
+          foreground: '#0f172a',
+          muted: '#64748b',
+          hover: 'rgba(255,255,255,0.7)',
+          active: '#0f172a',
         },
         brand: {
-          navy: '#1c2430',
-          charcoal: '#222831',
+          navy: '#0f172a',
+          charcoal: '#1e293b',
         },
         surface: {
-          DEFAULT: '#f4f5f7',
-          card: 'rgba(255,255,255,0.78)',
+          DEFAULT: '#f5f7fa',
+          card: 'rgba(255,255,255,0.62)',
         },
       },
       fontFamily: {
         sans: [
-          'var(--font-geist-sans)',
+          '-apple-system',
+          'BlinkMacSystemFont',
           'SF Pro Display',
-          'Segoe UI',
-          'Helvetica Neue',
-          'Arial',
+          'SF Pro Text',
+          'Inter',
+          'system-ui',
           'sans-serif',
         ],
       },

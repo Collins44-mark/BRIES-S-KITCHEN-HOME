@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { createExpense, listExpenses, type ExpenseListItem } from '@/lib/supabase/expenses';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
 
@@ -89,18 +90,21 @@ function ExpensesView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="page-title">Expenses</h1>
           <p className="page-subtitle">Track operating costs for the selected period.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          {showForm ? 'Close' : 'Record Expense'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <DateRangeFilter />
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            className="btn-primary h-10 px-4 text-sm sm:h-11"
+          >
+            {showForm ? 'Close' : 'Record Expense'}
+          </button>
+        </div>
       </div>
 
       {showForm && (

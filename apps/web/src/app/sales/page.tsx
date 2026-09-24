@@ -7,6 +7,8 @@ import { ArrowLeft, Download, Printer, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { printSaleReceipt } from '@/components/receipt/sale-receipt';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
+import { PageHeader } from '@/components/ui/page-header';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { useAuth } from '@/contexts/auth-context';
 import { useDateRange } from '@/contexts/date-range-context';
@@ -88,12 +90,11 @@ function SalesView() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="page-title">Sales History</h1>
-        <p className="page-subtitle">
-          Completed sales for {label.toLowerCase()}. Totals come from the database.
-        </p>
-      </div>
+      <PageHeader
+        title="Sales History"
+        subtitle={`Completed sales for ${label.toLowerCase()}. Totals come from the database.`}
+        action={<DateRangeFilter />}
+      />
 
       <div className="glass-card flex flex-col gap-3 p-4 sm:flex-row">
         <div className="relative flex-1">

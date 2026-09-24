@@ -13,6 +13,7 @@ import {
   getPurchasesReport,
   getSalesReport,
 } from '@/lib/supabase/reports';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
 
@@ -104,20 +105,19 @@ function ReportsView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="page-title">Reports</h1>
           <p className="page-subtitle">
             View and export business reports for the selected period.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={exportCsv}
-          className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
-        >
-          Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <DateRangeFilter />
+          <button type="button" onClick={exportCsv} className="btn-secondary h-10 px-4 text-sm sm:h-11">
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -128,8 +128,8 @@ function ReportsView() {
             onClick={() => setTab(t.key)}
             className={
               tab === t.key
-                ? 'rounded-xl bg-brand-navy px-3.5 py-2 text-sm font-medium text-white'
-                : 'rounded-xl border border-white/70 bg-white/70 px-3.5 py-2 text-sm text-slate-600'
+                ? 'btn-primary px-3.5 py-2 text-sm'
+                : 'btn-secondary px-3.5 py-2 text-sm'
             }
           >
             {t.label}

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { useAuth } from '@/contexts/auth-context';
 import { useDateRange } from '@/contexts/date-range-context';
@@ -134,22 +135,25 @@ function PurchasesView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="page-title">Purchases</h1>
           <p className="page-subtitle">
             Purchase history for {label.toLowerCase()}. Receive stock from active suppliers.
           </p>
         </div>
-        {canReceive ? (
-          <button
-            type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            {showForm ? 'Close' : 'Receive Purchase'}
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <DateRangeFilter />
+          {canReceive ? (
+            <button
+              type="button"
+              onClick={() => setShowForm((v) => !v)}
+              className="btn-primary h-10 px-4 text-sm sm:h-11"
+            >
+              {showForm ? 'Close' : 'Receive Purchase'}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {showForm && canReceive && (

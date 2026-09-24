@@ -6,14 +6,13 @@ import { Sidebar } from './sidebar';
 import { TopHeader } from './top-header';
 import { WelcomeToast } from './welcome-toast';
 import { useAuth } from '@/contexts/auth-context';
-import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  /** Sidebar starts closed — only the three-dot trigger is visible. */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -22,21 +21,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [loading, user, router, pathname]);
 
   useEffect(() => {
-    setMobileOpen(false);
+    setSidebarOpen(false);
   }, [pathname]);
 
   useEffect(() => {
-    document.body.classList.toggle('mobile-nav-open', mobileOpen);
+    document.body.classList.toggle('mobile-nav-open', sidebarOpen);
     return () => document.body.classList.remove('mobile-nav-open');
-  }, [mobileOpen]);
-
-  function toggleSidebar() {
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      setMobileOpen((open) => !open);
-      return;
-    }
-    setCollapsed((value) => !value);
-  }
+  }, [sidebarOpen]);
 
   if (loading || !user) {
     return (
@@ -48,21 +39,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen max-w-[100vw] overflow-x-clip">
-      <Sidebar
-        collapsed={collapsed}
-        onCollapsedChange={setCollapsed}
-        mobileOpen={mobileOpen}
-        onMobileOpenChange={setMobileOpen}
-      />
+      <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
 
-      <div
-        className={cn(
-          'relative flex min-h-screen max-w-full flex-col transition-[margin] duration-300',
-          collapsed ? 'lg:ml-[84px]' : 'lg:ml-[250px]',
-        )}
-      >
+      <div className="relative flex min-h-screen max-w-full flex-col">
         <header className="sticky top-0 z-30">
-          <TopHeader onToggleSidebar={toggleSidebar} />
+          <TopHeader onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         </header>
 
         {pathname.startsWith('/dashboard') && <WelcomeToast />}

@@ -9,11 +9,11 @@ import { formatTzs } from '@/lib/utils';
 /** Actual payment methods only — CREDIT is never a payment row. */
 const META: Record<
   'CASH' | 'MPESA' | 'BANK',
-  { label: string; icon: typeof Banknote; tone: 'green' | 'blue' }
+  { label: string; icon: typeof Banknote; tone: 'green' | 'blue' | 'purple' }
 > = {
   CASH: { label: 'Cash', icon: Banknote, tone: 'green' },
-  MPESA: { label: 'M-Pesa', icon: Smartphone, tone: 'green' },
-  BANK: { label: 'Bank', icon: Building2, tone: 'blue' },
+  MPESA: { label: 'M-Pesa', icon: Smartphone, tone: 'blue' },
+  BANK: { label: 'Bank', icon: Building2, tone: 'purple' },
 };
 
 export function PaymentMethodsCard({
@@ -24,25 +24,28 @@ export function PaymentMethodsCard({
   return (
     <section className="glass-card flex h-full flex-col p-3.5 sm:p-[18px]">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-[15px] font-semibold text-slate-800">Payment Methods</h3>
-        <Link href="/reports" className="text-[12px] font-medium text-sky-600 hover:text-sky-700">
-          View All →
+        <h3 className="text-[15px] font-semibold text-slate-900">Payment Methods</h3>
+        <Link href="/reports" className="view-all">
+          View All
         </Link>
       </div>
       {items.length === 0 ? (
         <p className="py-8 text-center text-sm text-slate-400">No payments yet</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {items.map((item) => {
             if (item.method === 'CREDIT') return null;
             const meta = META[item.method];
             if (!meta) return null;
             return (
-              <div key={item.method} className="flex items-center justify-between gap-3">
+              <div
+                key={item.method}
+                className="glass-row flex items-center justify-between gap-3 px-3 py-2.5"
+              >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <GlassIcon icon={meta.icon} tone={meta.tone} className="h-8 w-8 rounded-[10px]" />
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-slate-800">{meta.label}</p>
+                    <p className="truncate text-[13px] font-medium text-slate-900">{meta.label}</p>
                     <p className="text-[12px] font-semibold text-slate-700">{formatTzs(item.amount)}</p>
                   </div>
                 </div>

@@ -5,7 +5,9 @@ import { BarChart3, ShoppingCart, Users, Wallet } from 'lucide-react';
 import { getDashboardSummary } from '@/lib/supabase/dashboard';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { KpiCard } from '@/components/ui/kpi-card';
+import { PageHeader } from '@/components/ui/page-header';
 import { TopSellingProducts } from './top-selling-products';
 import { PaymentMethodsCard } from './payment-methods-card';
 import { TopDebtorsCard } from './top-debtors-card';
@@ -21,7 +23,12 @@ export function DashboardView() {
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-[18px]">
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+        <PageHeader
+          title="Dashboard"
+          subtitle="Here's your business overview for today."
+          action={<DateRangeFilter />}
+        />
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="glass-card h-[96px] animate-pulse sm:h-[108px] lg:h-[118px]" />
           ))}
@@ -36,15 +43,18 @@ export function DashboardView() {
 
   if (isError || (!isSuccess && !data)) {
     return (
-      <div className="glass-card p-8 text-center">
-        <p className="text-sm text-slate-600">Unable to load dashboard data. Please try again.</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="mt-4 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
-        >
-          Retry
-        </button>
+      <div className="space-y-4">
+        <PageHeader
+          title="Dashboard"
+          subtitle="Here's your business overview for today."
+          action={<DateRangeFilter />}
+        />
+        <div className="glass-card p-8 text-center">
+          <p className="text-sm text-slate-600">Unable to load dashboard data. Please try again.</p>
+          <button type="button" onClick={() => refetch()} className="btn-primary mt-4 px-4 py-2 text-sm">
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -62,12 +72,13 @@ export function DashboardView() {
 
   return (
     <div className="space-y-4 sm:space-y-[18px]">
-      <div>
-        <h1 className="page-title text-[1.65rem] font-bold sm:text-[28px]">Dashboard</h1>
-        <p className="page-subtitle">Here&apos;s your business overview for today.</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Here's your business overview for today."
+        action={<DateRangeFilter />}
+      />
 
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
         <KpiCard
           label="Total Sales"
           value={formatTzs(summary.totalSales)}
