@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { cn } from '@/lib/utils';
 
 export function WelcomeToast() {
   const { user } = useAuth();
+  const { t } = useLocale();
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -36,10 +38,10 @@ export function WelcomeToast() {
           <Users className="h-3.5 w-3.5" />
         </div>
         <div>
-          <p className="text-[13px] font-semibold text-slate-800">Welcome back, {user.firstName}!</p>
-          <p className="text-[11px] text-slate-500">
-            Have a productive day at BRIE&apos;S HOME &amp; KITCHEN.
+          <p className="text-[13px] font-semibold text-slate-800">
+            {t('dashboard.welcome')}, {user.firstName}!
           </p>
+          <p className="text-[11px] text-slate-500">{t('dashboard.welcomeBody')}</p>
         </div>
       </div>
     </div>

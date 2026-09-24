@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import {
   PRODUCT_UNIT_CODES,
   createProductPriceTier,
@@ -56,6 +57,7 @@ const emptyTierForm = (): TierFormState => ({
 });
 
 export function ProductUnitsModal({ productId, productName, onClose }: ProductUnitsModalProps) {
+  const { t } = useLocale();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER';
@@ -133,7 +135,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
       if (editingUnit && unitForm.isDefault && !editingUnit.isDefault) {
         await setDefaultProductUnit(unit.id);
       }
-      toast.success(editingUnit ? 'Selling unit updated' : 'Selling unit added');
+      toast.success(t('common.saved'));
       setAddingUnit(false);
       setEditingUnit(null);
       setUnitForm(emptyUnitForm());
@@ -141,28 +143,28 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
       invalidate();
     },
     onError: (err: Error) => {
-      setFormError(err.message || 'Failed to save selling unit');
-      toast.error(err.message || 'Failed to save selling unit');
+      setFormError(err.message || t('products.failSaveUnit'));
+      toast.error(err.message || t('products.failSaveUnit'));
     },
   });
 
   const defaultMutation = useMutation({
     mutationFn: (unitId: string) => setDefaultProductUnit(unitId),
     onSuccess: () => {
-      toast.success('Default selling unit updated');
+      toast.success(t('common.changesSaved'));
       invalidate();
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to set default unit'),
+    onError: (err: Error) => toast.error(err.message || t('products.failSaveUnit')),
   });
 
   const activeMutation = useMutation({
     mutationFn: ({ unitId, isActive }: { unitId: string; isActive: boolean }) =>
       setProductUnitActive(unitId, isActive),
     onSuccess: (_data, vars) => {
-      toast.success(vars.isActive ? 'Selling unit activated' : 'Selling unit deactivated');
+      toast.success(t('common.changesSaved'));
       invalidate();
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update unit status'),
+    onError: (err: Error) => toast.error(err.message || t('products.failSaveUnit')),
   });
 
   const saveTierMutation = useMutation({
@@ -175,15 +177,15 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
       return createProductPriceTier({ productUnitId: unitId, minQuantity, unitPrice });
     },
     onSuccess: () => {
-      toast.success(editingTier ? 'Wholesale tier updated' : 'Wholesale tier added');
+      toast.success(t('common.saved'));
       setEditingTier(null);
       setTierForm(emptyTierForm());
       setFormError(null);
       invalidate();
     },
     onError: (err: Error) => {
-      setFormError(err.message || 'Failed to save wholesale tier');
-      toast.error(err.message || 'Failed to save wholesale tier');
+      setFormError(err.message || t('products.failSaveWholesale'));
+      toast.error(err.message || t('products.failSaveWholesale'));
     },
   });
 
@@ -191,10 +193,10 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
     mutationFn: ({ tierId, isActive }: { tierId: string; isActive: boolean }) =>
       setProductPriceTierActive(tierId, isActive),
     onSuccess: (_data, vars) => {
-      toast.success(vars.isActive ? 'Tier activated' : 'Tier deactivated');
+      toast.success(t('common.changesSaved'));
       invalidate();
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update tier'),
+    onError: (err: Error) => toast.error(err.message || t('products.failSaveWholesale')),
   });
 
   function startAddUnit() {
@@ -265,15 +267,15 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
         <div className="flex items-start justify-between gap-3 border-b border-slate-100/80 px-5 py-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Selling units
+              {t('products.sellingUnits')}
             </p>
             <h2 id="product-units-title" className="mt-0.5 text-xl font-semibold text-slate-900">
               {productName}
             </h2>
             {catalog && (
               <p className="mt-1 text-xs text-slate-500">
-                Stock {catalog.stockQuantityBase} {catalog.baseUnitLabel} (base) · Cost{' '}
-                {formatTzs(catalog.costPricePerBase)} / base
+                {t('products.stock')} {catalog.stockQuantityBase} {catalog.baseUnitLabel} ·{' '}
+                {t('products.cost')} {formatTzs(catalog.costPricePerBase)}
               </p>
             )}
           </div>
@@ -282,7 +284,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
             onClick={onClose}
             disabled={busy}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -290,9 +292,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <p className="rounded-xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-xs leading-relaxed text-slate-600">
-            Inventory stays in base units (normally PCS). Selling units only configure conversion
-            and price — they do not create separate stock pools. For wholesale pricing, the highest
-            minimum quantity that is less than or equal to the entered quantity is used.
+            {t('products.manageUnitsHint')}
           </p>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -303,7 +303,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                 onChange={(e) => setShowInactive(e.target.checked)}
                 className="rounded border-slate-300"
               />
-              Show inactive
+              {t('common.showInactive')}
             </label>
             {canManage && !addingUnit && !editingUnit && (
               <button
@@ -312,14 +312,14 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                 disabled={availableCodes.length === 0 || isLoading}
                 className="rounded-xl bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
               >
-                Add unit
+                {t('common.add')}
               </button>
             )}
           </div>
 
           {!canManage && (
             <p className="mt-2 text-xs text-amber-700">
-              View only — ADMIN or MANAGER can change selling units.
+              {t('common.view')}
             </p>
           )}
 
@@ -333,7 +333,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
           {isError && !isLoading && (
             <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50/80 p-4 text-center">
               <p className="text-sm text-rose-700">
-                {error instanceof Error ? error.message : 'Unable to load selling units.'}
+                {error instanceof Error ? error.message : t('common.unableLoad')}
               </p>
               <button
                 type="button"
@@ -341,13 +341,13 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                 disabled={isFetching}
                 className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
               >
-                {isFetching ? 'Retrying…' : 'Retry'}
+                {isFetching ? t('common.loading') : t('common.retry')}
               </button>
             </div>
           )}
 
           {!isLoading && !isError && catalog && catalog.units.length === 0 && (
-            <p className="mt-4 text-center text-sm text-slate-500">No selling units yet.</p>
+            <p className="mt-4 text-center text-sm text-slate-500">{t('products.noSellingUnitsYet')}</p>
           )}
 
           {(addingUnit || editingUnit) && canManage && (
@@ -356,11 +356,11 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
               className="mt-4 space-y-3 rounded-xl border border-slate-200/80 bg-white/60 p-3"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {editingUnit ? `Edit ${editingUnit.unitCode}` : 'New selling unit'}
+                {editingUnit ? t('products.editSellingUnit', { code: editingUnit.unitCode }) : t('products.newSellingUnit')}
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-xs text-slate-500">
-                  Unit
+                  {t('common.unit')}
                   <select
                     value={unitForm.unitCode}
                     disabled={Boolean(editingUnit)}
@@ -383,16 +383,16 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                   </select>
                 </label>
                 <label className="block text-xs text-slate-500">
-                  Label
+                  {t('common.name')}
                   <input
                     value={unitForm.unitLabel}
                     onChange={(e) => setUnitForm((f) => ({ ...f, unitLabel: e.target.value }))}
                     className="input mt-1"
-                    placeholder="e.g. Set of 6"
+                    placeholder={t('common.name')}
                   />
                 </label>
                 <label className="block text-xs text-slate-500">
-                  Conversion to base
+                  {t('inventory.qtyBase')}
                   <input
                     type="number"
                     min={1}
@@ -407,7 +407,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                   />
                 </label>
                 <label className="block text-xs text-slate-500">
-                  Selling price
+                  {t('products.sellingPrice')}
                   <input
                     type="number"
                     min={0}
@@ -427,7 +427,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                     onChange={(e) => setUnitForm((f) => ({ ...f, isDefault: e.target.checked }))}
                     className="rounded border-slate-300"
                   />
-                  Set as default selling unit
+                  {t('products.setDefault')}
                 </label>
               )}
               {editingUnit && (
@@ -438,7 +438,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                     onChange={(e) => setUnitForm((f) => ({ ...f, isDefault: e.target.checked }))}
                     className="rounded border-slate-300"
                   />
-                  Make this the default selling unit
+                  {t('products.setDefault')}
                 </label>
               )}
               {formError && <p className="text-xs text-rose-600">{formError}</p>}
@@ -448,7 +448,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                   disabled={saveUnitMutation.isPending}
                   className="rounded-xl bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                 >
-                  {saveUnitMutation.isPending ? 'Saving…' : 'Save unit'}
+                  {saveUnitMutation.isPending ? t('products.saving') : t('products.saveUnit')}
                 </button>
                 <button
                   type="button"
@@ -456,7 +456,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                   disabled={saveUnitMutation.isPending}
                   className="rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs text-slate-700"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -487,12 +487,12 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                         </span>
                         {unit.isDefault && unit.isActive && (
                           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                            Default
+                            {t('common.active')}
                           </span>
                         )}
                         {!unit.isActive && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                            Inactive
+                            {t('common.inactive')}
                           </span>
                         )}
                       </div>
@@ -505,7 +505,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                       <RowActionsMenu
                         actions={[
                           {
-                            label: expanded ? 'Hide wholesale' : 'Wholesale',
+                            label: expanded ? t('products.hideWholesale') : t('products.wholesale'),
                             onClick: () => {
                               setExpandedUnitId(expanded ? null : unit.id);
                               if (!expanded) {
@@ -516,13 +516,13 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                           },
                           canManage
                             ? {
-                                label: 'Edit',
+                                label: t('common.edit'),
                                 onClick: () => startEditUnit(unit),
                               }
                             : null,
                           canManage && unit.isActive && !unit.isDefault
                             ? {
-                                label: 'Set default',
+                                label: t('products.setDefault'),
                                 disabled: defaultMutation.isPending,
                                 onClick: () => defaultMutation.mutate(unit.id),
                               }
@@ -530,14 +530,14 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                           canManage
                             ? unit.isActive
                               ? {
-                                  label: 'Deactivate',
+                                  label: t('common.deactivate'),
                                   disabled: activeMutation.isPending || unit.isDefault,
                                   tone: 'danger' as const,
                                   onClick: () =>
                                     activeMutation.mutate({ unitId: unit.id, isActive: false }),
                                 }
                               : {
-                                  label: 'Activate',
+                                  label: t('common.activate'),
                                   disabled: activeMutation.isPending,
                                   onClick: () =>
                                     activeMutation.mutate({ unitId: unit.id, isActive: true }),
@@ -551,15 +551,14 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                   {expanded && (
                     <div className="mt-3 border-t border-slate-100 pt-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Wholesale pricing
+                        {t('products.wholesale')}
                       </p>
                       <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                        For wholesale pricing, the highest minimum quantity that is less than or
-                        equal to the entered quantity is used.
+                        {t('products.manageUnitsHint')}
                       </p>
 
                       {unit.priceTiers.length === 0 && (
-                        <p className="mt-2 text-xs text-slate-400">No wholesale tiers.</p>
+                        <p className="mt-2 text-xs text-slate-400">{t('products.noWholesaleTiers')}</p>
                       )}
 
                       <ul className="mt-2 space-y-1.5">
@@ -570,13 +569,13 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                           >
                             <span className={!tier.isActive ? 'text-slate-400 line-through' : ''}>
                               {tier.minQuantity}+ → {formatTzs(tier.unitPrice)}
-                              {!tier.isActive ? ' (inactive)' : ''}
+                              {!tier.isActive ? ` (${t('common.inactive')})` : ''}
                             </span>
                             {canManage && (
                               <RowActionsMenu
                                 actions={[
                                   {
-                                    label: 'Edit',
+                                    label: t('common.edit'),
                                     onClick: () => {
                                       setEditingTier(tier);
                                       setTierForm({
@@ -587,7 +586,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                                     },
                                   },
                                   {
-                                    label: tier.isActive ? 'Deactivate' : 'Activate',
+                                    label: tier.isActive ? t('common.deactivate') : t('common.activate'),
                                     disabled: tierActiveMutation.isPending,
                                     tone: tier.isActive ? 'danger' : 'default',
                                     onClick: () =>
@@ -613,7 +612,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                             min={1}
                             step={1}
                             required
-                            placeholder="Min qty"
+                            placeholder={t('common.quantity')}
                             value={tierForm.minQuantity}
                             onChange={(e) =>
                               setTierForm((f) => ({ ...f, minQuantity: e.target.value }))
@@ -625,7 +624,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                             min={0}
                             step="0.01"
                             required
-                            placeholder="Unit price"
+                            placeholder={t('common.price')}
                             value={tierForm.unitPrice}
                             onChange={(e) =>
                               setTierForm((f) => ({ ...f, unitPrice: e.target.value }))
@@ -640,8 +639,8 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                             {saveTierMutation.isPending
                               ? '…'
                               : editingTier
-                                ? 'Update'
-                                : 'Add'}
+                                ? t('common.edit')
+                                : t('common.add')}
                           </button>
                           {editingTier && (
                             <button
@@ -652,7 +651,7 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                               }}
                               className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600"
                             >
-                              Cancel
+                              {t('common.cancel')}
                             </button>
                           )}
                         </form>

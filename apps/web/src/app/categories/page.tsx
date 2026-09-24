@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { RowActionsMenu } from '@/components/ui/row-actions-menu';
+import { useLocale } from '@/contexts/locale-context';
 import {
   createCategory,
   listCategories,
@@ -13,6 +14,7 @@ import {
   updateCategory,
   type CategoryRow,
 } from '@/lib/supabase/categories';
+import { statusKey } from '@/lib/i18n/dictionaries';
 
 export default function CategoriesPage() {
   return (
@@ -23,6 +25,7 @@ export default function CategoriesPage() {
 }
 
 function CategoriesView() {
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<CategoryRow | null>(null);
@@ -41,32 +44,32 @@ function CategoriesView() {
   const createMutation = useMutation({
     mutationFn: createCategory,
     onSuccess: () => {
-      toast.success('Category created');
+      toast.success(t('common.saved'));
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to create category'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, ...input }: { id: string; name: string; description?: string | null }) =>
       updateCategory(id, input),
     onSuccess: () => {
-      toast.success('Category updated');
+      toast.success(t('common.changesSaved'));
       setEditing(null);
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update category'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       setCategoryActive(id, isActive),
-    onSuccess: (_data, vars) => {
-      toast.success(vars.isActive ? 'Category activated' : 'Category deactivated');
+    onSuccess: () => {
+      toast.success(t('common.changesSaved'));
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update category'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
@@ -89,12 +92,17 @@ function CategoriesView() {
     });
   }
 
+  function statusLabel(isActive: boolean) {
+    const key = statusKey(isActive ? 'ACTIVE' : 'INACTIVE');
+    return key ? t(key) : isActive ? t('common.active') : t('common.inactive');
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="page-title">Categories</h1>
-          <p className="page-subtitle">Organize products into catalog groups.</p>
+          <h1 className="page-title">{t('categories.title')}</h1>
+          <p className="page-subtitle">{t('categories.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
@@ -104,7 +112,7 @@ function CategoriesView() {
               onChange={(e) => setShowInactive(e.target.checked)}
               className="rounded border-slate-300"
             />
-            Show inactive
+            {t('common.showInactive')}
           </label>
           <button
             type="button"
@@ -114,21 +122,21 @@ function CategoriesView() {
             }}
             className="min-h-11 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
           >
-            {showForm ? 'Close' : 'Add Category'}
+            {showForm ? t('common.close') : t('categories.add')}
           </button>
         </div>
       </div>
 
       {showForm && !editing && (
         <form onSubmit={onCreate} className="glass-card grid gap-3 p-5 md:grid-cols-2">
-          <input name="name" required placeholder="Category name" className="field" />
-          <input name="description" placeholder="Description (optional)" className="field" />
+          <input name="name" required placeholder={t('common.name')} className="field" />
+          <input name="description" placeholder={t('common.description')} className="field" />
           <button
             type="submit"
             disabled={createMutation.isPending}
             className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white md:col-span-2 disabled:opacity-60"
           >
-            {createMutation.isPending ? 'Saving...' : 'Save Category'}
+            {createMutation.isPending ? t('common.loading') : t('common.save')}
           </button>
         </form>
       )}
@@ -139,13 +147,13 @@ function CategoriesView() {
             name="name"
             required
             defaultValue={editing.name}
-            placeholder="Category name"
+            placeholder={t('common.name')}
             className="field"
           />
           <input
             name="description"
             defaultValue={editing.description ?? ''}
-            placeholder="Description (optional)"
+            placeholder={t('common.description')}
             className="field"
           />
           <div className="flex gap-2 md:col-span-2">
@@ -154,14 +162,14 @@ function CategoriesView() {
               disabled={updateMutation.isPending}
               className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {updateMutation.isPending ? 'Saving...' : 'Update Category'}
+              {updateMutation.isPending ? t('common.loading') : t('categories.edit')}
             </button>
             <button
               type="button"
               onClick={() => setEditing(null)}
               className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>
@@ -171,22 +179,24 @@ function CategoriesView() {
         {/* Mobile / tablet cards */}
         <div className="divide-y divide-slate-50 lg:hidden">
           {isLoading && (
-            <p className="px-4 py-8 text-center text-sm text-slate-400">Loading…</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-400">{t('common.loading')}</p>
           )}
           {isError && !isLoading && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-slate-600">Unable to load categories.</p>
+              <p className="text-sm text-slate-600">{t('common.unableLoad')}</p>
               <button
                 type="button"
                 onClick={() => refetch()}
                 className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
               >
-                Retry
+                {t('common.retry')}
               </button>
             </div>
           )}
           {!isLoading && !isError && categories.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-slate-400">No categories yet</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-400">
+              {t('categories.noCategories')}
+            </p>
           )}
           {!isLoading &&
             !isError &&
@@ -204,21 +214,21 @@ function CategoriesView() {
                       c.is_active ? 'text-emerald-600' : 'text-slate-400'
                     }`}
                   >
-                    {c.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    {statusLabel(c.is_active)}
                   </span>
                 </div>
                 <div className="mt-2.5 flex justify-end">
                   <RowActionsMenu
                     actions={[
                       {
-                        label: 'Edit',
+                        label: t('common.edit'),
                         onClick: () => {
                           setShowForm(false);
                           setEditing(c);
                         },
                       },
                       {
-                        label: c.is_active ? 'Deactivate' : 'Activate',
+                        label: c.is_active ? t('common.deactivate') : t('common.activate'),
                         disabled: toggleMutation.isPending,
                         tone: c.is_active ? 'danger' : 'default',
                         onClick: () =>
@@ -236,17 +246,17 @@ function CategoriesView() {
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="bg-slate-50/70 text-xs uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">{t('common.name')}</th>
+                <th className="px-4 py-3 font-medium">{t('common.description')}</th>
+                <th className="px-4 py-3 font-medium">{t('common.status')}</th>
+                <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && <TableLoadingRow colSpan={4} />}
               {isError && !isLoading && <TableErrorRow colSpan={4} onRetry={() => refetch()} />}
               {!isLoading && !isError && categories.length === 0 && (
-                <TableEmptyRow colSpan={4} message="No categories yet" />
+                <TableEmptyRow colSpan={4} message={t('categories.noCategories')} />
               )}
               {!isLoading &&
                 !isError &&
@@ -256,7 +266,7 @@ function CategoriesView() {
                     <td className="px-4 py-3 text-slate-500">{c.description ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={c.is_active ? 'text-emerald-600' : 'text-slate-400'}>
-                        {c.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        {statusLabel(c.is_active)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -264,14 +274,14 @@ function CategoriesView() {
                         <RowActionsMenu
                           actions={[
                             {
-                              label: 'Edit',
+                              label: t('common.edit'),
                               onClick: () => {
                                 setShowForm(false);
                                 setEditing(c);
                               },
                             },
                             {
-                              label: c.is_active ? 'Deactivate' : 'Activate',
+                              label: c.is_active ? t('common.deactivate') : t('common.activate'),
                               disabled: toggleMutation.isPending,
                               tone: c.is_active ? 'danger' : 'default',
                               onClick: () =>

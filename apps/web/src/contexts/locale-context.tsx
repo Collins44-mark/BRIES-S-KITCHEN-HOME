@@ -15,10 +15,12 @@ import {
   type AppLocale,
 } from '@/lib/i18n/dictionaries';
 
+type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
+
 type LocaleContextValue = {
   locale: AppLocale;
   setLocale: (locale: AppLocale) => void;
-  t: (key: string) => string;
+  t: TranslateFn;
 };
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
@@ -57,13 +59,14 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const t = useCallback<TranslateFn>(
+    (key, vars) => translate(locale, key, vars),
+    [locale],
+  );
+
   const value = useMemo<LocaleContextValue>(
-    () => ({
-      locale,
-      setLocale,
-      t: (key: string) => translate(locale, key),
-    }),
-    [locale, setLocale],
+    () => ({ locale, setLocale, t }),
+    [locale, setLocale, t],
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;

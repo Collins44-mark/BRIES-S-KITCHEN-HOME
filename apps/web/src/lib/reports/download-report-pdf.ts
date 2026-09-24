@@ -1,10 +1,12 @@
 import { jsPDF } from 'jspdf';
+import { DEFAULT_LOCALE, translate } from '@/lib/i18n/dictionaries';
 import {
   REPORT_COLUMNS,
-  REPORT_TITLES,
+  REPORT_TITLE_KEYS,
   formatReportCell,
   type ReportKey,
   type ReportSummaryItem,
+  type ReportTranslateFn,
 } from '@/lib/reports/report-presentation';
 
 type DownloadReportPdfInput = {
@@ -12,6 +14,8 @@ type DownloadReportPdfInput = {
   periodLabel: string;
   summaries: ReportSummaryItem[];
   rows: Array<Record<string, unknown>>;
+  /** Optional translate fn for PDF static labels. Brand name stays English. */
+  t?: ReportTranslateFn;
 };
 
 function safeFilename(tab: ReportKey, periodLabel: string): string {
@@ -35,6 +39,8 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
     unit: 'mm',
     format: 'a4',
   });
+  const t: ReportTranslateFn =
+    input.t ?? ((key, vars) => translate(DEFAULT_LOCALE, key, vars));
 
   const marginX = 14;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -73,7 +79,7 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
     columns.forEach((col, i) => {
       const align = col.kind === 'money' || col.kind === 'number' ? 'right' : 'left';
       const textX = align === 'right' ? x + widths[i]! - 1 : x + 1;
-      doc.text(col.label, textX, y, { align });
+      doc.text(t(col.labelKey), textX, y, { align });
       x += widths[i]!;
     });
     y += 6;
@@ -82,7 +88,7 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
     y += 4;
   };
 
-  // Header
+  // Header — brand name stays English
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(15, 23, 42);
@@ -92,13 +98,13 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(30, 41, 59);
-  doc.text(REPORT_TITLES[input.tab], marginX, y);
+  doc.text(t(REPORT_TITLE_KEYS[input.tab]), marginX, y);
   y += 6;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Period: ${input.periodLabel}`, marginX, y);
+  doc.text(`${t('reports.period')}: ${input.periodLabel}`, marginX, y);
   y += 5;
 
   doc.setDrawColor(226, 232, 240);
@@ -110,7 +116,7 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(71, 85, 105);
-    doc.text('Summary', marginX, y);
+    doc.text(t('reports.summary'), marginX, y);
     y += 5;
 
     const perRow = wide ? 3 : 2;
@@ -141,7 +147,7 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(148, 163, 184);
-    doc.text('No data available for this period.', marginX, y);
+    doc.text(t('common.noDataPeriod'), marginX, y);
   } else {
     drawTableHeader();
 
@@ -154,7 +160,7 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
       let x = marginX;
       let rowHeight = 5;
       const cells = columns.map((col, i) => {
-        const text = formatReportCell(col.kind, row[col.key]);
+        const text = formatReportCell(col.kind, row[col.key], t);
         const maxW = widths[i]! - 2;
         const lines = doc.splitTextToSize(text, maxW) as string[];
         rowHeight = Math.max(rowHeight, lines.length * 3.4);
@@ -182,7 +188,9 @@ export async function downloadReportPdf(input: DownloadReportPdfInput): Promise<
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.text(t('reports.page', { current: i, total: pageCount }), pageWidth / 2, pageHeight - 8, {
+      align: 'center',
+    });
   }
 
   doc.save(safeFilename(input.tab, input.periodLabel));

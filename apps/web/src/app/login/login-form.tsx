@@ -4,11 +4,13 @@ import { FormEvent, useEffect, useId, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import styles from './login.module.css';
 
 export default function LoginForm() {
   const { login, user, loading } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
   const params = useSearchParams();
   const emailId = useId();
@@ -35,7 +37,7 @@ export default function LoginForm() {
       await login(emailOrUsername, password);
       router.replace(nextPath);
     } catch {
-      setError('Invalid email or password.');
+      setError(t('login.invalid'));
     } finally {
       setSubmitting(false);
     }
@@ -58,7 +60,7 @@ export default function LoginForm() {
         <div className={styles.greenGlass} aria-hidden />
         <div className={styles.bootCenter}>
           <div className={styles.bootSpinner} aria-hidden />
-          <span className={styles.visuallyHidden}>Loading</span>
+          <span className={styles.visuallyHidden}>{t('common.loading')}</span>
         </div>
       </div>
     );
@@ -95,7 +97,7 @@ export default function LoginForm() {
           <form onSubmit={onSubmit} className={styles.form} noValidate>
             <div className={styles.field}>
               <label htmlFor={emailId} className={styles.visuallyHidden}>
-                Email or username
+                {t('login.email')}
               </label>
               <div className={styles.inputShell}>
                 <span className={styles.iconBadge} aria-hidden>
@@ -108,7 +110,7 @@ export default function LoginForm() {
                   inputMode="email"
                   value={emailOrUsername}
                   onChange={(e) => setEmailOrUsername(e.target.value)}
-                  placeholder="Email or username"
+                  placeholder={t('login.email')}
                   className={styles.input}
                   required
                   disabled={submitting}
@@ -118,7 +120,7 @@ export default function LoginForm() {
 
             <div className={styles.field}>
               <label htmlFor={passwordId} className={styles.visuallyHidden}>
-                Password
+                {t('login.password')}
               </label>
               <div className={styles.inputShell}>
                 <span className={styles.iconBadge} aria-hidden>
@@ -130,7 +132,7 @@ export default function LoginForm() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
+                  placeholder={t('login.password')}
                   className={styles.input}
                   required
                   disabled={submitting}
@@ -139,7 +141,7 @@ export default function LoginForm() {
                   type="button"
                   className={styles.eyeBtn}
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   disabled={submitting}
                 >
                   {showPassword ? (
@@ -163,7 +165,7 @@ export default function LoginForm() {
               disabled={submitting}
               aria-busy={submitting}
             >
-              <span className={styles.submitLabel}>Sign in</span>
+              <span className={styles.submitLabel}>{t('login.signIn')}</span>
               <span className={styles.submitArrow} aria-hidden>
                 <ArrowRight className={styles.arrowIcon} strokeWidth={2.25} />
               </span>

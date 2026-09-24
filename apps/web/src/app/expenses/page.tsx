@@ -9,6 +9,8 @@ import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/q
 import { createExpense, listExpenses, type ExpenseListItem } from '@/lib/supabase/expenses';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { useDateRange } from '@/contexts/date-range-context';
+import { useLocale } from '@/contexts/locale-context';
+import { paymentMethodKey } from '@/lib/i18n/dictionaries';
 import { formatTzs } from '@/lib/utils';
 
 export default function ExpensesPage() {
@@ -22,6 +24,7 @@ export default function ExpensesPage() {
 }
 
 function ExpensesView() {
+  const { t } = useLocale();
   const params = useSearchParams();
   const { preset, from, to } = useDateRange();
   const queryClient = useQueryClient();
@@ -40,12 +43,12 @@ function ExpensesView() {
   const createMutation = useMutation({
     mutationFn: createExpense,
     onSuccess: () => {
-      toast.success('Expense recorded');
+      toast.success(t('common.saved'));
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to record expense'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
@@ -63,19 +66,19 @@ function ExpensesView() {
     const description = String(fd.get('description') || '').trim() || null;
 
     if (!title) {
-      toast.error('Title is required.');
+      toast.error(t('expenses.titleField'));
       return;
     }
     if (!category) {
-      toast.error('Category is required.');
+      toast.error(t('common.category'));
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error('Amount must be greater than zero.');
+      toast.error(t('common.amount'));
       return;
     }
     if (!['CASH', 'MPESA', 'BANK'].includes(paymentMethod)) {
-      toast.error('Choose a valid payment method.');
+      toast.error(t('common.method'));
       return;
     }
 
@@ -88,12 +91,17 @@ function ExpensesView() {
     });
   }
 
+  function methodLabel(method: string) {
+    const key = paymentMethodKey(method);
+    return key.startsWith('common.') ? t(key) : method;
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="page-title">Expenses</h1>
-          <p className="page-subtitle">Track operating costs for the selected period.</p>
+          <h1 className="page-title">{t('expenses.title')}</h1>
+          <p className="page-subtitle">{t('expenses.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateRangeFilter />
@@ -102,14 +110,20 @@ function ExpensesView() {
             onClick={() => setShowForm((v) => !v)}
             className="btn-primary h-10 px-4 text-sm sm:h-11"
           >
-            {showForm ? 'Close' : 'Record Expense'}
+            {showForm ? t('common.close') : t('expenses.record')}
           </button>
         </div>
       </div>
 
       {showForm && (
         <form onSubmit={onCreate} className="glass-card grid gap-3 p-5 md:grid-cols-2">
-          <input name="title" required placeholder="Title" className="field" disabled={createMutation.isPending} />
+          <input
+            name="title"
+            required
+            placeholder={t('expenses.titleField')}
+            className="field"
+            disabled={createMutation.isPending}
+          />
           <select name="category" required className="field" disabled={createMutation.isPending}>
             <option value="Transport">Transport</option>
             <option value="Electricity">Electricity</option>
@@ -123,18 +137,18 @@ function ExpensesView() {
             type="number"
             min={0.01}
             step="0.01"
-            placeholder="Amount"
+            placeholder={t('common.amount')}
             className="field"
             disabled={createMutation.isPending}
           />
           <select name="paymentMethod" className="field" disabled={createMutation.isPending}>
-            <option value="CASH">Cash</option>
-            <option value="MPESA">M-Pesa</option>
-            <option value="BANK">Bank</option>
+            <option value="CASH">{t('common.cash')}</option>
+            <option value="MPESA">{t('common.mpesa')}</option>
+            <option value="BANK">{t('common.bank')}</option>
           </select>
           <input
             name="description"
-            placeholder="Description"
+            placeholder={t('common.description')}
             className="field md:col-span-2"
             disabled={createMutation.isPending}
           />
@@ -143,7 +157,7 @@ function ExpensesView() {
             disabled={createMutation.isPending}
             className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 md:col-span-2"
           >
-            {createMutation.isPending ? 'Saving…' : 'Save Expense'}
+            {createMutation.isPending ? t('common.loading') : t('common.save')}
           </button>
         </form>
       )}
@@ -153,18 +167,18 @@ function ExpensesView() {
           <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
-              <th className="px-4 py-3">Title</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Method</th>
-              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">{t('expenses.titleField')}</th>
+              <th className="px-4 py-3">{t('common.category')}</th>
+              <th className="px-4 py-3">{t('common.amount')}</th>
+              <th className="px-4 py-3">{t('common.method')}</th>
+              <th className="px-4 py-3">{t('common.date')}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && <TableLoadingRow colSpan={5} />}
             {isError && !isLoading && <TableErrorRow colSpan={5} onRetry={() => refetch()} />}
             {!isLoading && !isError && expenses.length === 0 && (
-              <TableEmptyRow colSpan={5} message="No expenses yet" />
+              <TableEmptyRow colSpan={5} message={t('expenses.noExpenses')} />
             )}
             {!isLoading &&
               !isError &&
@@ -173,7 +187,7 @@ function ExpensesView() {
                   <td className="px-4 py-3 font-medium text-slate-800">{e.title}</td>
                   <td className="px-4 py-3">{e.category}</td>
                   <td className="px-4 py-3">{formatTzs(e.amount)}</td>
-                  <td className="px-4 py-3">{e.paymentMethod}</td>
+                  <td className="px-4 py-3">{methodLabel(e.paymentMethod)}</td>
                   <td className="px-4 py-3 text-slate-500">
                     {new Date(e.expenseDate).toLocaleDateString()}
                   </td>

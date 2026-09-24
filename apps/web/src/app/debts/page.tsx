@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
+import { statusKey } from '@/lib/i18n/dictionaries';
 import {
   getCustomerDebtDetails,
   listDebtors,
@@ -30,7 +32,13 @@ export default function DebtsPage() {
   );
 }
 
+function labelStatus(status: string, t: (key: string) => string) {
+  const key = statusKey(status);
+  return key ? t(key) : status.replaceAll('_', ' ');
+}
+
 function DebtsView() {
+  const { t } = useLocale();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -64,14 +72,14 @@ function DebtsView() {
             setSelectedId(sale.customerId);
             setDeepLinkSaleId(sale.id);
           } else {
-            toast.error('This sale has no customer account to record a payment against.');
+            toast.error(t('common.somethingWrong'));
           }
         } else if (customerParam) {
           setSelectedId(customerParam);
         }
       } catch (err) {
         if (!cancelled) {
-          toast.error(err instanceof Error ? err.message : 'Unable to open debt payment.');
+          toast.error(err instanceof Error ? err.message : t('common.unableLoad'));
         }
       } finally {
         if (!cancelled) setDeepLinkHandled(true);
@@ -82,7 +90,7 @@ function DebtsView() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, deepLinkHandled]);
+  }, [searchParams, deepLinkHandled, t]);
 
   const {
     data,
@@ -112,19 +120,19 @@ function DebtsView() {
     if (!deepLinkSaleId || !detail) return;
     const match = detail.outstandingSales.find((s) => s.id === deepLinkSaleId);
     if (!canRecordPayment) {
-      toast.error('Your role can view debts but cannot record payments.');
+      toast.error(t('common.somethingWrong'));
     } else if (match) {
       setPayingSale(match);
     } else {
-      toast.error('That sale has no outstanding amount due.');
+      toast.error(t('debts.noDebts'));
     }
     setDeepLinkSaleId(null);
-  }, [deepLinkSaleId, detail, canRecordPayment]);
+  }, [deepLinkSaleId, detail, canRecordPayment, t]);
 
   const payMutation = useMutation({
     mutationFn: recordDebtPayment,
     onSuccess: () => {
-      toast.success('Payment recorded');
+      toast.success(t('common.saved'));
       setPayingSale(null);
       queryClient.invalidateQueries({ queryKey: ['debts'] });
       queryClient.invalidateQueries({ queryKey: ['debt-detail', selectedId] });
@@ -133,7 +141,7 @@ function DebtsView() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to record payment'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const debtors = data?.debtors ?? [];
@@ -141,21 +149,19 @@ function DebtsView() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-title">Debts / Credit</h1>
-        <p className="page-subtitle">
-          Outstanding customer balances and debt repayments.
-        </p>
+        <h1 className="page-title">{t('debts.title')}</h1>
+        <p className="page-subtitle">{t('debts.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
         <div className="glass-card p-3 sm:p-4 lg:p-5">
-          <p className="text-[11px] text-slate-500 sm:text-sm">Total Outstanding</p>
+          <p className="text-[11px] text-slate-500 sm:text-sm">{t('debts.totalOutstanding')}</p>
           <p className="kpi-value mt-1.5 text-rose-600 sm:mt-2">
             {isLoading ? '—' : formatTzs(data?.totalOutstanding ?? '0')}
           </p>
         </div>
         <div className="glass-card p-3 sm:p-4 lg:p-5">
-          <p className="text-[11px] text-slate-500 sm:text-sm">Debtors</p>
+          <p className="text-[11px] text-slate-500 sm:text-sm">{t('debts.debtors')}</p>
           <p className="kpi-value mt-1.5 text-slate-900 sm:mt-2">
             {isLoading ? '—' : (data?.debtorsCount ?? 0)}
           </p>
@@ -168,7 +174,7 @@ function DebtsView() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search debtor by name or phone..."
+            placeholder={t('debts.search')}
             className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 pl-10 pr-3 text-sm outline-none focus:border-sky-300"
           />
         </div>
@@ -177,14 +183,14 @@ function DebtsView() {
       {isError && !isLoading && (
         <div className="glass-card p-6 text-center">
           <p className="text-sm text-slate-600">
-            {error instanceof Error ? error.message : 'Unable to load debts. Please try again.'}
+            {error instanceof Error ? error.message : t('common.unableLoad')}
           </p>
           <button
             type="button"
             onClick={() => refetch()}
             className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
           >
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       )}
@@ -195,18 +201,18 @@ function DebtsView() {
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
               <th className="px-4 py-3">#</th>
-              <th className="px-4 py-3">Customer</th>
-              <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">Purchases</th>
-              <th className="px-4 py-3">Paid</th>
-              <th className="px-4 py-3">Outstanding</th>
+<th className="px-4 py-3">{t('common.customer')}</th>
+<th className="px-4 py-3">{t('common.phone')}</th>
+<th className="px-4 py-3">{t('customers.purchases')}</th>
+<th className="px-4 py-3">{t('customers.paid')}</th>
+<th className="px-4 py-3">{t('debts.outstanding')}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && <TableLoadingRow colSpan={6} />}
             {isError && !isLoading && <TableErrorRow colSpan={6} onRetry={() => refetch()} />}
             {!isLoading && !isError && debtors.length === 0 && (
-              <TableEmptyRow colSpan={6} message="No outstanding debts" />
+              <TableEmptyRow colSpan={6} message={t('debts.noDebts')} />
             )}
             {!isLoading &&
               !isError &&
@@ -239,7 +245,7 @@ function DebtsView() {
           errorMessage={
             detailErrorObj instanceof Error
               ? detailErrorObj.message
-              : 'Unable to load customer debt details.'
+              : t('debts.loadDetailError')
           }
           canRecordPayment={canRecordPayment}
           onBack={() => {
@@ -286,6 +292,7 @@ function DebtDetailModal({
   onRetry: () => void;
   onPaySale: (sale: OutstandingSale) => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/30 p-3 sm:items-center sm:p-4">
       <div
@@ -302,10 +309,10 @@ function DebtDetailModal({
               className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Debts
+              {t('common.back')}
             </button>
             <h2 id="debt-detail-title" className="truncate text-lg font-semibold text-slate-900">
-              {detail?.name ?? (loading ? 'Loading…' : 'Debtor details')}
+              {detail?.name ?? (loading ? t('common.loading') : t('debts.debtorDetails'))}
             </h2>
             {detail?.phone ? <p className="page-subtitle">{detail.phone}</p> : null}
           </div>
@@ -313,7 +320,7 @@ function DebtDetailModal({
             type="button"
             onClick={onBack}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -336,14 +343,14 @@ function DebtDetailModal({
                   onClick={onRetry}
                   className="rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
                 >
-                  Retry
+                  {t('common.retry')}
                 </button>
                 <button
                   type="button"
                   onClick={onBack}
                   className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700"
                 >
-                  Back to Debts
+                  {t('common.back')}
                 </button>
               </div>
             </div>
@@ -353,19 +360,19 @@ function DebtDetailModal({
             <div className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-slate-100 bg-white/60 p-4">
-                  <p className="text-xs uppercase text-slate-400">Total purchases</p>
+                  <p className="text-xs uppercase text-slate-400">{t('customers.purchases')}</p>
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {formatTzs(detail.totalPurchases)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-white/60 p-4">
-                  <p className="text-xs uppercase text-slate-400">Total paid</p>
+                  <p className="text-xs uppercase text-slate-400">{t('customers.paid')}</p>
                   <p className="mt-1 text-lg font-semibold text-slate-900">
                     {formatTzs(detail.totalPaid)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-white/60 p-4">
-                  <p className="text-xs uppercase text-slate-400">Outstanding</p>
+                  <p className="text-xs uppercase text-slate-400">{t('debts.outstanding')}</p>
                   <p className="mt-1 text-lg font-semibold text-rose-600">
                     {formatTzs(detail.outstandingBalance)}
                   </p>
@@ -374,30 +381,34 @@ function DebtDetailModal({
 
               {(detail.email || !detail.isActive) && (
                 <div className="text-sm text-slate-600">
-                  {detail.email ? <p>Email: {detail.email}</p> : null}
+                  {detail.email ? (
+                    <p>
+                      {t('suppliers.email')}: {detail.email}
+                    </p>
+                  ) : null}
                   {!detail.isActive ? (
-                    <p className="mt-1 text-amber-700">This customer is inactive.</p>
+                    <p className="mt-1 text-amber-700">{t('common.inactive')}</p>
                   ) : null}
                 </div>
               )}
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">Outstanding sales</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-800">{t('debts.outstanding')}</h3>
                 {detail.outstandingSales.length === 0 ? (
                   <p className="rounded-xl border border-slate-100 bg-white/60 px-4 py-5 text-center text-sm text-slate-400">
-                    No open sales with amount due
+                    {t('debts.noDebts')}
                   </p>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white/60">
                     <table className="w-full min-w-[640px] text-left text-sm">
                       <thead className="bg-slate-50/80 text-xs uppercase text-slate-400">
                         <tr>
-                          <th className="px-3 py-2.5 font-medium">Invoice</th>
-                          <th className="px-3 py-2.5 font-medium">Date</th>
-                          <th className="px-3 py-2.5 font-medium">Total</th>
-                          <th className="px-3 py-2.5 font-medium">Paid</th>
-                          <th className="px-3 py-2.5 font-medium">Due</th>
-                          <th className="px-3 py-2.5 font-medium">Status</th>
+                          <th className="px-3 py-2.5 font-medium">{t('common.invoice')}</th>
+                          <th className="px-3 py-2.5 font-medium">{t('common.date')}</th>
+                          <th className="px-3 py-2.5 font-medium">{t('common.total')}</th>
+                          <th className="px-3 py-2.5 font-medium">{t('customers.paid')}</th>
+                          <th className="px-3 py-2.5 font-medium">{t('debts.outstanding')}</th>
+                          <th className="px-3 py-2.5 font-medium">{t('common.status')}</th>
                           {canRecordPayment ? (
                             <th className="px-3 py-2.5 font-medium" />
                           ) : null}
@@ -417,7 +428,9 @@ function DebtDetailModal({
                             <td className="px-3 py-2.5 font-semibold text-rose-600">
                               {formatTzs(sale.amountDue)}
                             </td>
-                            <td className="px-3 py-2.5 text-slate-600">{sale.paymentStatus}</td>
+                            <td className="px-3 py-2.5 text-slate-600">
+                              {labelStatus(sale.paymentStatus, t)}
+                            </td>
                             {canRecordPayment ? (
                               <td className="px-3 py-2.5 text-right">
                                 <button
@@ -425,7 +438,7 @@ function DebtDetailModal({
                                   onClick={() => onPaySale(sale)}
                                   className="rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white"
                                 >
-                                  Record payment
+                                  {t('debts.recordPayment')}
                                 </button>
                               </td>
                             ) : null}
@@ -436,17 +449,15 @@ function DebtDetailModal({
                   </div>
                 )}
                 {!canRecordPayment ? (
-                  <p className="mt-2 text-xs text-slate-500">
-                    View only — recording debt payments requires Admin, Manager, or Cashier.
-                  </p>
+                  <p className="mt-2 text-xs text-slate-500">{t('common.view')}</p>
                 ) : null}
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">Transaction history</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-800">{t('debts.paymentHistory')}</h3>
                 {detail.transactions.length === 0 ? (
                   <p className="rounded-xl border border-slate-100 bg-white/60 px-4 py-5 text-center text-sm text-slate-400">
-                    No ledger entries yet
+                    {t('customers.noLedger')}
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -492,7 +503,7 @@ function DebtDetailModal({
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to Debts
+                  {t('common.back')}
                 </button>
               </div>
             </div>
@@ -525,6 +536,7 @@ function DebtPaymentModal({
     notes?: string | null;
   }) => void;
 }) {
+  const { t } = useLocale();
   const amountDue = Number(sale.amountDue);
   const [amount, setAmount] = useState(String(amountDue));
   const [method, setMethod] = useState<DebtPaymentMethod>('CASH');
@@ -537,11 +549,11 @@ function DebtPaymentModal({
 
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) {
-      toast.error('Payment amount must be greater than 0.');
+      toast.error(t('common.amount'));
       return;
     }
     if (value > amountDue) {
-      toast.error('Payment amount exceeds the sale amount due.');
+      toast.error(t('common.amount'));
       return;
     }
 
@@ -566,7 +578,7 @@ function DebtPaymentModal({
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-4">
           <div>
             <h2 id="debt-payment-title" className="text-lg font-semibold text-slate-900">
-              Record payment
+              {t('debts.recordPayment')}
             </h2>
             <p className="page-subtitle">
               {customerName} · {sale.invoiceNumber}
@@ -577,7 +589,7 @@ function DebtPaymentModal({
             onClick={onClose}
             disabled={isPending}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -586,22 +598,22 @@ function DebtPaymentModal({
         <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5">
           <div className="rounded-xl border border-slate-100 bg-white/60 p-3 text-sm">
             <div className="flex justify-between text-slate-600">
-              <span>Total</span>
+              <span>{t('common.total')}</span>
               <span>{formatTzs(sale.totalAmount)}</span>
             </div>
             <div className="mt-1 flex justify-between text-slate-600">
-              <span>Paid</span>
+              <span>{t('customers.paid')}</span>
               <span>{formatTzs(sale.amountPaid)}</span>
             </div>
             <div className="mt-1 flex justify-between font-semibold text-rose-600">
-              <span>Amount due</span>
+              <span>{t('debts.outstanding')}</span>
               <span>{formatTzs(sale.amountDue)}</span>
             </div>
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium uppercase text-slate-400">
-              Amount
+              {t('common.amount')}
             </label>
             <input
               type="number"
@@ -618,7 +630,7 @@ function DebtPaymentModal({
 
           <div>
             <label className="mb-1 block text-xs font-medium uppercase text-slate-400">
-              Method
+              {t('common.method')}
             </label>
             <select
               value={method}
@@ -626,34 +638,34 @@ function DebtPaymentModal({
               disabled={isPending}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm disabled:opacity-60"
             >
-              <option value="CASH">Cash</option>
-              <option value="MPESA">M-Pesa</option>
-              <option value="BANK">Bank</option>
+<option value="CASH">{t('common.cash')}</option>
+<option value="MPESA">{t('common.mpesa')}</option>
+<option value="BANK">{t('common.bank')}</option>
             </select>
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium uppercase text-slate-400">
-              Reference (optional)
+              {t('common.reference')}
             </label>
             <input
               value={reference}
               onChange={(e) => setReference(e.target.value)}
               disabled={isPending}
-              placeholder="M-Pesa code / bank ref"
+              placeholder={t('common.reference')}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300 disabled:opacity-60"
             />
           </div>
 
           <div>
             <label className="mb-1 block text-xs font-medium uppercase text-slate-400">
-              Notes (optional)
+              {t('common.notes')}
             </label>
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               disabled={isPending}
-              placeholder="Debt repayment"
+              placeholder={t('common.notes')}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300 disabled:opacity-60"
             />
           </div>
@@ -665,14 +677,14 @@ function DebtPaymentModal({
               disabled={isPending}
               className="h-11 flex-1 rounded-xl border border-slate-200 bg-white/80 text-sm font-medium text-slate-700 disabled:opacity-60"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending}
               className="h-11 flex-1 rounded-xl bg-brand-navy text-sm font-semibold text-white disabled:opacity-60"
             >
-              {isPending ? 'Processing…' : 'Confirm payment'}
+              {isPending ? t('pos.processing') : t('debts.confirmPayment')}
             </button>
           </div>
         </form>

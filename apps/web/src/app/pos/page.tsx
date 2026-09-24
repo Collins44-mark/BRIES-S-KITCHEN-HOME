@@ -9,6 +9,7 @@ import {
   SaleCompletedModal,
   type CompletedSaleContext,
 } from '@/components/receipt/sale-completed-modal';
+import { useLocale } from '@/contexts/locale-context';
 import { listCategories } from '@/lib/supabase/categories';
 import { fetchCustomerByPhone, fetchCustomers } from '@/lib/supabase/customers';
 import { listProducts, type ProductListItem } from '@/lib/supabase/products';
@@ -53,6 +54,7 @@ export default function PosPage() {
 }
 
 function PosView() {
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<string>('');
@@ -146,7 +148,7 @@ function PosView() {
 
   const createSaleMutation = useMutation({
     mutationFn: createSale,
-    onError: (err: Error) => toast.error(err.message || 'Failed to complete sale'),
+    onError: (err: Error) => toast.error(err.message || t('pos.failComplete')),
   });
 
   function resetPosCart() {
@@ -182,13 +184,13 @@ function PosView() {
       unitOverride ??
       resolveUnitForProduct(product, tileUnitId[product.id]);
     if (!unit) {
-      toast.error('No active selling unit configured for this product');
+      toast.error(t('pos.noSellingUnit'));
       return;
     }
 
     const available = availableSellingQuantity(product.stockQuantity, unit.conversionToBase);
     if (available < 1) {
-      toast.error('Out of stock for this selling unit');
+      toast.error(t('pos.outOfStockUnit'));
       return;
     }
 
@@ -255,7 +257,7 @@ function PosView() {
       nextUnit.conversionToBase,
     );
     if (available < 1) {
-      toast.error('Out of stock for this selling unit');
+      toast.error(t('pos.outOfStockUnit'));
       return;
     }
 
@@ -287,22 +289,22 @@ function PosView() {
     try {
       const customer = await fetchCustomerByPhone(phoneSearch.trim());
       setCustomerId(customer.id);
-      toast.success(`Selected ${customer.name}`);
+      toast.success(`${t('pos.selectCustomer')}: ${customer.name}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Customer not found');
+      toast.error(err instanceof Error ? err.message : t('pos.customerNotFound'));
     }
   }
 
   function completeSale() {
     if (!cart.length) {
-      toast.error('Cart is empty');
+      toast.error(t('pos.emptyCart'));
       return;
     }
     if (createSaleMutation.isPending) return;
 
     for (const line of cart) {
       if (!line.productUnit?.id) {
-        toast.error('Each cart item needs a selling unit');
+        toast.error(t('pos.needSellingUnit'));
         return;
       }
     }
@@ -310,11 +312,11 @@ function PosView() {
     // Walk-in (empty customerId → null) is valid for fully paid sales.
     const tendered = amountTendered === '' ? total : Number(amountTendered);
     if (Number.isNaN(tendered) || tendered < 0) {
-      toast.error('Enter a valid amount received');
+      toast.error(t('pos.invalidAmountReceived'));
       return;
     }
     if (tendered < total && !customerId.trim()) {
-      toast.error('Credit sales require a registered customer. Walk-in is fine for paid sales.');
+      toast.error(t('pos.creditNeedsCustomer'));
       return;
     }
 
@@ -354,8 +356,8 @@ function PosView() {
           resetPosCart();
           toast.success(
             sale.invoice_number
-              ? `Sale completed — ${sale.invoice_number}`
-              : 'Sale completed',
+              ? `${t('pos.saleCompleted')} — ${sale.invoice_number}`
+              : t('pos.saleCompleted'),
           );
           queryClient.invalidateQueries({ queryKey: ['products'] });
           queryClient.invalidateQueries({ queryKey: ['product-units'] });
@@ -373,8 +375,8 @@ function PosView() {
   return (
     <div className="space-y-4 pb-24 xl:pb-0">
       <div>
-        <h1 className="page-title">POS / Sales</h1>
-        <p className="page-subtitle">Search products, build a cart, and complete the sale.</p>
+        <h1 className="page-title">{t('pos.title')}</h1>
+        <p className="page-subtitle">{t('pos.subtitle')}</p>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
@@ -387,7 +389,7 @@ function PosView() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search products or barcode..."
+                  placeholder={t('pos.searchProducts')}
                   className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 pl-10 pr-3 text-sm outline-none focus:border-sky-300"
                 />
               </div>
@@ -396,7 +398,7 @@ function PosView() {
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="h-11 w-full shrink-0 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm sm:w-auto sm:min-w-[10rem]"
               >
-                <option value="">All categories</option>
+                <option value="">{t('common.all')} — {t('common.category')}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -413,7 +415,7 @@ function PosView() {
               ))}
             {(isError || unitsError) && !isLoading && !unitsLoading && (
               <div className="glass-card col-span-2 p-6 text-center lg:col-span-3">
-                <p className="text-sm text-slate-600">Unable to load products. Please try again.</p>
+                <p className="text-sm text-slate-600">{t('common.unableLoad')}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -422,7 +424,7 @@ function PosView() {
                   }}
                   className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
                 >
-                  Retry
+                  {t('common.retry')}
                 </button>
               </div>
             )}
@@ -432,7 +434,7 @@ function PosView() {
               !unitsError &&
               products.length === 0 && (
                 <p className="col-span-2 py-8 text-center text-sm text-slate-400 lg:col-span-3">
-                  No products yet
+                  {t('products.noProducts')}
                 </p>
               )}
             {!isLoading &&
@@ -468,7 +470,7 @@ function PosView() {
                       ) : null}
                     </p>
                     <p className="mt-1 text-[10px] leading-snug text-slate-500 sm:text-xs">
-                      Stock: {product.stockQuantity} base
+                      {t('products.stock')}: {product.stockQuantity}
                       {selectedUnit
                         ? ` · ${available} ${selectedUnit.unitCode}`
                         : ''}
@@ -483,18 +485,20 @@ function PosView() {
                           }))
                         }
                         className="mt-2 h-10 w-full min-w-0 rounded-lg border border-slate-200 bg-white/80 px-1.5 text-[11px] sm:h-9 sm:px-2 sm:text-xs"
-                        aria-label={`Selling unit for ${product.name}`}
+                        aria-label={t('pos.sellingUnitFor', { name: product.name })}
                       >
                         {units.map((u) => (
                           <option key={u.id} value={u.id}>
                             {u.unitCode}
                             {u.unitLabel !== u.unitCode ? ` — ${u.unitLabel}` : ''}
-                            {u.conversionToBase > 1 ? ` (=${u.conversionToBase} base)` : ''}
+                            {u.conversionToBase > 1
+                              ? ` (=${u.conversionToBase} ${t('pos.baseUnits')})`
+                              : ''}
                           </option>
                         ))}
                       </select>
                     ) : (
-                      <p className="mt-2 text-[11px] text-rose-600">No selling units</p>
+                      <p className="mt-2 text-[11px] text-rose-600">{t('pos.noSellingUnits')}</p>
                     )}
                     <button
                       type="button"
@@ -502,7 +506,7 @@ function PosView() {
                       disabled={!selectedUnit || available < 1}
                       className="mt-2 inline-flex min-h-10 items-center justify-center rounded-lg bg-brand-navy px-2.5 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:mt-3 sm:min-h-0 sm:py-1.5 sm:font-medium"
                     >
-                      Add
+                      {t('pos.addToCart')}
                     </button>
                   </div>
                 );
@@ -513,9 +517,9 @@ function PosView() {
         {/* Cart / checkout column */}
         <div className="min-w-0 space-y-3 sm:space-y-4 xl:col-span-5">
           <div className="glass-card p-3.5 sm:p-5">
-            <h2 className="mb-3 text-base font-semibold text-slate-800 sm:mb-4">Current Cart</h2>
+            <h2 className="mb-3 text-base font-semibold text-slate-800 sm:mb-4">{t('pos.cart')}</h2>
             {cart.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400 sm:py-8">No items yet.</p>
+              <p className="py-6 text-center text-sm text-slate-400 sm:py-8">{t('pos.emptyCart')}</p>
             ) : (
               <div className="space-y-3">
                 {cart.map((line) => {
@@ -536,7 +540,7 @@ function PosView() {
                           <p className="text-xs text-slate-500">
                             {formatTzs(unitPrice)} / {line.productUnit.unitCode}
                             {line.productUnit.conversionToBase > 1
-                              ? ` · ${baseQty} base`
+                              ? ` · ${baseQty} ${t('pos.baseUnits')}`
                               : ''}
                           </p>
                         </div>
@@ -551,7 +555,7 @@ function PosView() {
                               ),
                             )
                           }
-                          aria-label="Remove item"
+                          aria-label={t('pos.removeItem')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -573,7 +577,7 @@ function PosView() {
                             type="button"
                             className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 sm:h-8 sm:w-8"
                             onClick={() => setLineQuantity(line, line.quantity - 1)}
-                            aria-label="Decrease quantity"
+                            aria-label={t('pos.decreaseQty')}
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
@@ -582,7 +586,7 @@ function PosView() {
                             type="button"
                             className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 sm:h-8 sm:w-8"
                             onClick={() => setLineQuantity(line, line.quantity + 1)}
-                            aria-label="Increase quantity"
+                            aria-label={t('pos.increaseQty')}
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -599,13 +603,13 @@ function PosView() {
           </div>
 
           <div className="glass-card space-y-3 p-3.5 sm:p-5">
-            <h2 className="text-base font-semibold text-slate-800">Customer</h2>
+            <h2 className="text-base font-semibold text-slate-800">{t('pos.customer')}</h2>
             <select
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
             >
-              <option value="">Walk-in Customer</option>
+              <option value="">{t('pos.walkIn')}</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} {c.phone ? `(${c.phone})` : ''}
@@ -616,7 +620,7 @@ function PosView() {
               <input
                 value={phoneSearch}
                 onChange={(e) => setPhoneSearch(e.target.value)}
-                placeholder="Search by phone 0712345678"
+                placeholder={t('pos.searchCustomerPhone')}
                 className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
               />
               <button
@@ -624,22 +628,24 @@ function PosView() {
                 onClick={findCustomerByPhone}
                 className="h-11 shrink-0 rounded-xl bg-slate-100 px-3 text-sm font-medium"
               >
-                Find
+                {t('common.search')}
               </button>
             </div>
           </div>
 
           <div id="pos-checkout" className="glass-card space-y-3 p-3.5 sm:p-5">
-            <h2 className="text-base font-semibold text-slate-800">Discount & Payment</h2>
+            <h2 className="text-base font-semibold text-slate-800">
+              {t('common.discount')} &amp; {t('pos.payment')}
+            </h2>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={discountType}
                 onChange={(e) => setDiscountType(e.target.value as SaleDiscountType)}
                 className="h-11 min-w-0 rounded-xl border border-slate-200 bg-white/80 px-2 text-sm sm:px-3"
               >
-                <option value="NONE">No discount</option>
-                <option value="PERCENTAGE">Percentage %</option>
-                <option value="FIXED">Fixed amount</option>
+                <option value="NONE">{t('pos.noDiscount')}</option>
+                <option value="PERCENTAGE">{t('pos.percentageDiscount')}</option>
+                <option value="FIXED">{t('pos.fixedDiscount')}</option>
               </select>
               <input
                 type="number"
@@ -655,29 +661,29 @@ function PosView() {
               onChange={(e) => setPaymentMethod(e.target.value as SalePaymentMethod)}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
             >
-              <option value="CASH">Cash</option>
-              <option value="MPESA">M-Pesa</option>
-              <option value="BANK">Bank</option>
+              <option value="CASH">{t('common.cash')}</option>
+              <option value="MPESA">{t('common.mpesa')}</option>
+              <option value="BANK">{t('common.bank')}</option>
             </select>
             <input
               type="number"
               min={0}
               value={amountTendered}
               onChange={(e) => setAmountTendered(e.target.value)}
-              placeholder={`Amount received (default ${total})`}
+              placeholder={`${t('pos.cashReceived')} (${formatTzs(total)})`}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm"
             />
             <div className="space-y-1 border-t border-slate-100 pt-3 text-sm">
               <div className="flex justify-between gap-2 text-slate-500">
-                <span>Subtotal</span>
+                <span>{t('common.subtotal')}</span>
                 <span className="shrink-0">{formatTzs(subtotal)}</span>
               </div>
               <div className="flex justify-between gap-2 text-slate-500">
-                <span>Discount</span>
+                <span>{t('common.discount')}</span>
                 <span className="shrink-0">-{formatTzs(discountAmount)}</span>
               </div>
               <div className="flex justify-between gap-2 text-base font-semibold text-slate-900">
-                <span>Total</span>
+                <span>{t('common.total')}</span>
                 <span className="shrink-0 break-all text-right">{formatTzs(total)}</span>
               </div>
             </div>
@@ -687,7 +693,7 @@ function PosView() {
               disabled={createSaleMutation.isPending || cart.length === 0 || Boolean(completedSale)}
               className="h-12 w-full rounded-2xl bg-brand-navy text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
             >
-              {createSaleMutation.isPending ? 'Processing...' : 'Complete Sale'}
+              {createSaleMutation.isPending ? t('pos.processing') : t('pos.completeSale')}
             </button>
           </div>
         </div>
@@ -699,8 +705,8 @@ function PosView() {
           <div className="min-w-0 flex-1">
             <p className="text-[11px] text-slate-500">
               {cart.length === 0
-                ? 'Cart empty'
-                : `${cart.length} ${cart.length === 1 ? 'item' : 'items'}`}
+                ? t('pos.emptyCart')
+                : `${cart.length} · ${t('sales.items')}`}
             </p>
             <p className="truncate text-base font-semibold text-slate-900">{formatTzs(total)}</p>
           </div>
@@ -712,7 +718,7 @@ function PosView() {
             disabled={cart.length === 0}
             className="h-11 shrink-0 rounded-xl bg-brand-navy px-4 text-sm font-semibold text-white disabled:opacity-50"
           >
-            Checkout
+            {t('pos.checkout')}
           </button>
         </div>
       </div>

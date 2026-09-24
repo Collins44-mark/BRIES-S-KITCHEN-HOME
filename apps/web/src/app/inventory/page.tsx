@@ -9,6 +9,8 @@ import {
   TableErrorRow,
   TableLoadingRow,
 } from '@/components/ui/query-status';
+import { useLocale } from '@/contexts/locale-context';
+import { statusKey } from '@/lib/i18n/dictionaries';
 import { listCategories } from '@/lib/supabase/categories';
 import {
   getInventoryProductDetails,
@@ -21,6 +23,15 @@ import {
   type InventoryStockStatus,
 } from '@/lib/supabase/inventory';
 import { formatTzs } from '@/lib/utils';
+
+const MOVEMENT_TYPE_KEYS: Record<string, string> = {
+  PURCHASE: 'inventory.purchase',
+  SALE: 'inventory.sale',
+  RETURN: 'inventory.return',
+  ADJUSTMENT: 'inventory.adjustment',
+  DAMAGE: 'inventory.damage',
+  LOSS: 'inventory.loss',
+};
 
 export default function InventoryPage() {
   return (
@@ -37,6 +48,7 @@ function stockBadgeClass(status: InventoryStockStatus): string {
 }
 
 function InventoryView() {
+  const { t } = useLocale();
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [stockStatus, setStockStatus] = useState<InventoryStockStatus | 'ALL'>('ALL');
@@ -92,34 +104,42 @@ function InventoryView() {
 
   const products = data?.products ?? [];
 
+  function labelStatus(status: string) {
+    const key = statusKey(status);
+    return key ? t(key) : status.replaceAll('_', ' ');
+  }
+
+  function labelMovementType(type: string) {
+    const key = MOVEMENT_TYPE_KEYS[type];
+    return key ? t(key) : type;
+  }
+
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="page-title">Inventory</h1>
-        <p className="page-subtitle">
-          Stock levels from products and movement history. Stock changes via sales and purchases.
-        </p>
+        <h1 className="page-title">{t('inventory.title')}</h1>
+        <p className="page-subtitle">{t('inventory.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         {[
           {
-            label: 'In Stock',
+            label: t('common.inStock'),
             value: isLoading ? '—' : (data?.inStock ?? 0),
             color: 'text-emerald-600',
           },
           {
-            label: 'Low Stock',
+            label: t('common.lowStock'),
             value: isLoading ? '—' : (data?.lowStock ?? 0),
             color: 'text-amber-600',
           },
           {
-            label: 'Out of Stock',
+            label: t('common.outOfStock'),
             value: isLoading ? '—' : (data?.outOfStock ?? 0),
             color: 'text-rose-600',
           },
           {
-            label: 'Stock Value',
+            label: t('inventory.stockValue'),
             value: isLoading ? '—' : formatTzs(data?.totalStockValue ?? '0'),
             color: 'text-slate-900',
           },
@@ -137,7 +157,7 @@ function InventoryView() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search product or SKU..."
+            placeholder={t('products.search')}
             className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 pl-10 pr-3 text-sm outline-none focus:border-sky-300"
           />
         </div>
@@ -146,7 +166,7 @@ function InventoryView() {
           onChange={(e) => setCategoryId(e.target.value)}
           className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm lg:w-auto"
         >
-          <option value="">All categories</option>
+          <option value="">{t('common.all')}</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -158,24 +178,24 @@ function InventoryView() {
           onChange={(e) => setStockStatus(e.target.value as InventoryStockStatus | 'ALL')}
           className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm lg:w-auto"
         >
-          <option value="ALL">All stock statuses</option>
-          <option value="IN_STOCK">In stock</option>
-          <option value="LOW_STOCK">Low stock</option>
-          <option value="OUT_OF_STOCK">Out of stock</option>
+          <option value="ALL">{t('common.all')}</option>
+          <option value="IN_STOCK">{labelStatus('IN_STOCK')}</option>
+          <option value="LOW_STOCK">{labelStatus('LOW_STOCK')}</option>
+          <option value="OUT_OF_STOCK">{labelStatus('OUT_OF_STOCK')}</option>
         </select>
       </div>
 
       {isError && !isLoading && (
         <div className="glass-card p-6 text-center">
           <p className="text-sm text-slate-600">
-            {error instanceof Error ? error.message : 'Unable to load inventory.'}
+            {error instanceof Error ? error.message : t('inventory.loadError')}
           </p>
           <button
             type="button"
             onClick={() => refetch()}
             className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
           >
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       )}
@@ -183,15 +203,15 @@ function InventoryView() {
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="glass-card overflow-hidden">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="font-semibold text-slate-800">Products</h2>
+            <h2 className="font-semibold text-slate-800">{t('inventory.products')}</h2>
           </div>
           <div className="max-h-[480px] table-scroll">
             <table className="w-full min-w-[480px] text-left text-sm">
               <thead className="sticky top-0 bg-white/90 text-xs uppercase text-slate-400">
                 <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Qty (base)</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">{t('products.product')}</th>
+                  <th className="px-4 py-3">{t('inventory.qtyBase')}</th>
+                  <th className="px-4 py-3">{t('common.status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -200,7 +220,7 @@ function InventoryView() {
                   <TableErrorRow colSpan={3} onRetry={() => refetch()} />
                 )}
                 {!isLoading && !isError && products.length === 0 && (
-                  <TableEmptyRow colSpan={3} message="No inventory data yet" />
+                  <TableEmptyRow colSpan={3} message={t('inventory.noData')} />
                 )}
                 {!isLoading &&
                   !isError &&
@@ -223,7 +243,7 @@ function InventoryView() {
                         <span
                           className={`inline-flex rounded-lg px-2 py-0.5 text-xs font-medium ${stockBadgeClass(p.stockStatus)}`}
                         >
-                          {p.stockStatus.replaceAll('_', ' ')}
+                          {labelStatus(p.stockStatus)}
                         </span>
                       </td>
                     </tr>
@@ -235,28 +255,28 @@ function InventoryView() {
 
         <div className="glass-card overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
-            <h2 className="font-semibold text-slate-800">Recent Movements</h2>
+            <h2 className="font-semibold text-slate-800">{t('inventory.movements')}</h2>
             <select
               value={movementType}
               onChange={(e) => setMovementType(e.target.value as InventoryMovementType | 'ALL')}
               className="h-9 rounded-lg border border-slate-200 bg-white/80 px-2 text-xs"
             >
-              <option value="ALL">All types</option>
-              <option value="PURCHASE">Purchase</option>
-              <option value="SALE">Sale</option>
-              <option value="RETURN">Return</option>
-              <option value="ADJUSTMENT">Adjustment</option>
-              <option value="DAMAGE">Damage</option>
-              <option value="LOSS">Loss</option>
+              <option value="ALL">{t('inventory.allTypes')}</option>
+              <option value="PURCHASE">{t('inventory.purchase')}</option>
+              <option value="SALE">{t('inventory.sale')}</option>
+              <option value="RETURN">{t('inventory.return')}</option>
+              <option value="ADJUSTMENT">{t('inventory.adjustment')}</option>
+              <option value="DAMAGE">{t('inventory.damage')}</option>
+              <option value="LOSS">{t('inventory.loss')}</option>
             </select>
           </div>
           <div className="max-h-[480px] table-scroll">
             <table className="w-full min-w-[420px] text-left text-sm">
               <thead className="sticky top-0 bg-white/90 text-xs uppercase text-slate-400">
                 <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Qty (base)</th>
+                  <th className="px-4 py-3">{t('products.product')}</th>
+                  <th className="px-4 py-3">{t('common.status')}</th>
+                  <th className="px-4 py-3">{t('inventory.qtyBase')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -265,7 +285,7 @@ function InventoryView() {
                   <TableErrorRow colSpan={3} onRetry={() => refetchMovements()} />
                 )}
                 {!movementsLoading && !movementsError && movements.length === 0 && (
-                  <TableEmptyRow colSpan={3} message="No movements yet" />
+                  <TableEmptyRow colSpan={3} message={t('inventory.noData')} />
                 )}
                 {!movementsLoading &&
                   !movementsError &&
@@ -278,7 +298,7 @@ function InventoryView() {
                           {m.reference ? ` · ${m.reference}` : ''}
                         </p>
                       </td>
-                      <td className="px-4 py-3">{m.type}</td>
+                      <td className="px-4 py-3">{labelMovementType(m.type)}</td>
                       <td className="px-4 py-3 font-medium">
                         {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
                       </td>
@@ -298,7 +318,7 @@ function InventoryView() {
           errorMessage={
             detailErrorObj instanceof Error
               ? detailErrorObj.message
-              : 'Unable to load product inventory.'
+              : t('inventory.loadError')
           }
           onBack={() => setSelectedId(null)}
           onRetry={() => refetchDetail()}
@@ -323,6 +343,18 @@ function InventoryDetailModal({
   onBack: () => void;
   onRetry: () => void;
 }) {
+  const { t } = useLocale();
+
+  function labelStatus(status: string) {
+    const key = statusKey(status);
+    return key ? t(key) : status.replaceAll('_', ' ');
+  }
+
+  function labelMovementType(type: string) {
+    const key = MOVEMENT_TYPE_KEYS[type];
+    return key ? t(key) : type;
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/30 p-3 sm:items-center sm:p-4">
       <div
@@ -339,13 +371,13 @@ function InventoryDetailModal({
               className="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-slate-900"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Inventory
+              {t('common.back')}
             </button>
             <h2
               id="inventory-detail-title"
               className="truncate text-lg font-semibold text-slate-900"
             >
-              {detail?.name ?? (loading ? 'Loading…' : 'Product inventory')}
+              {detail?.name ?? (loading ? t('common.loading') : t('inventory.title'))}
             </h2>
             {detail ? (
               <p className="mt-1 text-sm text-slate-500">
@@ -357,7 +389,7 @@ function InventoryDetailModal({
             type="button"
             onClick={onBack}
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="h-5 w-5" />
           </button>
@@ -380,14 +412,14 @@ function InventoryDetailModal({
                   onClick={onRetry}
                   className="rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
                 >
-                  Retry
+                  {t('common.retry')}
                 </button>
                 <button
                   type="button"
                   onClick={onBack}
                   className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700"
                 >
-                  Back to Inventory
+                  {t('common.back')}
                 </button>
               </div>
             </div>
@@ -397,40 +429,39 @@ function InventoryDetailModal({
             <div className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-slate-100 bg-white/60 p-4">
-                  <p className="text-xs uppercase text-slate-400">Current stock (base)</p>
+                  <p className="text-xs uppercase text-slate-400">{t('inventory.qtyBase')}</p>
                   <p className="mt-1 text-2xl font-semibold text-slate-900">
                     {detail.stockQuantity} {detail.unit}
                   </p>
                   <span
                     className={`mt-2 inline-flex rounded-lg px-2 py-0.5 text-xs font-medium ${stockBadgeClass(detail.stockStatus)}`}
                   >
-                    {detail.stockStatus.replaceAll('_', ' ')}
+                    {labelStatus(detail.stockStatus)}
                   </span>
-                  <p className="mt-2 text-xs text-slate-400">
-                    From products.stock_quantity (not summed from movements)
-                  </p>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-white/60 p-4 text-sm">
                   <div className="flex justify-between text-slate-600">
-                    <span>Cost price</span>
+                    <span>{t('products.cost')}</span>
                     <span>{formatTzs(detail.costPrice)}</span>
                   </div>
                   <div className="mt-2 flex justify-between text-slate-600">
-                    <span>Selling price</span>
+                    <span>{t('products.sellingPrice')}</span>
                     <span>{formatTzs(detail.sellingPrice)}</span>
                   </div>
                   <div className="mt-2 flex justify-between text-slate-600">
-                    <span>Reorder level</span>
+                    <span>{t('products.stock')}</span>
                     <span>{detail.reorderLevel}</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-800">Recent movements</h3>
+                <h3 className="mb-2 text-sm font-semibold text-slate-800">
+                  {t('inventory.movements')}
+                </h3>
                 {detail.recentMovements.length === 0 ? (
                   <p className="rounded-xl border border-slate-100 bg-white/60 px-4 py-5 text-center text-sm text-slate-400">
-                    No movements for this product
+                    {t('inventory.noData')}
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -440,7 +471,9 @@ function InventoryDetailModal({
                         className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-white/60 px-3 py-2.5 text-sm"
                       >
                         <div className="min-w-0">
-                          <p className="font-medium text-slate-800">{m.type}</p>
+                          <p className="font-medium text-slate-800">
+                            {labelMovementType(m.type)}
+                          </p>
                           <p className="text-xs text-slate-500">
                             {new Date(m.createdAt).toLocaleString()}
                             {m.reference ? ` · ${m.reference}` : ''}
@@ -452,7 +485,6 @@ function InventoryDetailModal({
                         </div>
                         <p className="shrink-0 font-medium text-slate-900">
                           {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
-                          <span className="ml-1 text-xs font-normal text-slate-400">base</span>
                         </p>
                       </li>
                     ))}
@@ -467,7 +499,7 @@ function InventoryDetailModal({
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to Inventory
+                  {t('common.back')}
                 </button>
               </div>
             </div>

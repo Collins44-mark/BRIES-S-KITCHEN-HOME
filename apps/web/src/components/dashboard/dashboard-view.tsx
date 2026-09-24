@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart3, ShoppingCart, Users, Wallet } from 'lucide-react';
 import { getDashboardSummary } from '@/lib/supabase/dashboard';
 import { useDateRange } from '@/contexts/date-range-context';
+import { useLocale } from '@/contexts/locale-context';
 import { formatTzs } from '@/lib/utils';
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { KpiCard } from '@/components/ui/kpi-card';
@@ -14,6 +15,7 @@ import { TopDebtorsCard } from './top-debtors-card';
 import { QuickActionsCard } from './quick-actions-card';
 
 export function DashboardView() {
+  const { t } = useLocale();
   const { preset, from, to } = useDateRange();
   const { data, isLoading, isError, refetch, isSuccess } = useQuery({
     queryKey: ['dashboard-summary', preset, from, to],
@@ -24,8 +26,8 @@ export function DashboardView() {
     return (
       <div className="space-y-4 sm:space-y-[18px]">
         <PageHeader
-          title="Dashboard"
-          subtitle="Here's your business overview for today."
+          title={t('dashboard.title')}
+          subtitle={t('dashboard.subtitle')}
           action={<DateRangeFilter />}
         />
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
@@ -45,14 +47,14 @@ export function DashboardView() {
     return (
       <div className="space-y-4">
         <PageHeader
-          title="Dashboard"
-          subtitle="Here's your business overview for today."
+          title={t('dashboard.title')}
+          subtitle={t('dashboard.subtitle')}
           action={<DateRangeFilter />}
         />
         <div className="glass-card p-8 text-center">
-          <p className="text-sm text-slate-600">Unable to load dashboard data. Please try again.</p>
+          <p className="text-sm text-slate-600">{t('dashboard.loadError')}</p>
           <button type="button" onClick={() => refetch()} className="btn-primary mt-4 px-4 py-2 text-sm">
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -60,27 +62,27 @@ export function DashboardView() {
   }
 
   const summary = data;
-  const compareLabel = preset === 'today' ? 'yesterday' : 'previous period';
+  const comparePhrase = preset === 'today' ? t('common.fromYesterday') : t('common.fromPrevious');
   const salesHint =
     summary.salesChangePercent === null
       ? undefined
-      : `${summary.salesChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.salesChangePercent)}% from ${compareLabel}`;
+      : `${summary.salesChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.salesChangePercent)}% ${comparePhrase}`;
   const profitHint =
     summary.profitChangePercent === null
       ? undefined
-      : `${summary.profitChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.profitChangePercent)}% from ${compareLabel}`;
+      : `${summary.profitChangePercent >= 0 ? '↑' : '↓'} ${Math.abs(summary.profitChangePercent)}% ${comparePhrase}`;
 
   return (
     <div className="space-y-4 sm:space-y-[18px]">
       <PageHeader
-        title="Dashboard"
-        subtitle="Here's your business overview for today."
+        title={t('dashboard.title')}
+        subtitle={t('dashboard.subtitle')}
         action={<DateRangeFilter />}
       />
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:gap-4">
         <KpiCard
-          label="Total Sales"
+          label={t('dashboard.totalSales')}
           value={formatTzs(summary.totalSales)}
           hint={salesHint}
           hintPositive={
@@ -90,7 +92,7 @@ export function DashboardView() {
           tone="green"
         />
         <KpiCard
-          label="Total Profit"
+          label={t('dashboard.totalProfit')}
           value={formatTzs(summary.totalProfit)}
           hint={profitHint}
           hintPositive={
@@ -100,16 +102,16 @@ export function DashboardView() {
           tone="purple"
         />
         <KpiCard
-          label="Amount Collected"
+          label={t('dashboard.amountCollected')}
           value={formatTzs(summary.amountCollected)}
-          hint={`${summary.collectedPercentOfSales}% of sales`}
+          hint={`${summary.collectedPercentOfSales}% ${t('common.ofSales')}`}
           icon={Wallet}
           tone="blue"
         />
         <KpiCard
-          label="Outstanding Debts"
+          label={t('dashboard.outstandingDebts')}
           value={formatTzs(summary.outstandingDebts)}
-          hint={`${summary.debtorsCount} customers`}
+          hint={t('common.customersCount', { count: summary.debtorsCount })}
           icon={Users}
           tone="red"
         />

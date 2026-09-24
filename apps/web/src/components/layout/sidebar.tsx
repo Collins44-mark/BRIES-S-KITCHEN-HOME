@@ -22,22 +22,23 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import { BrandLogo, ProfileAvatar } from '@/components/brand/brand-logo';
 
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/pos', label: 'POS / Sales', icon: ShoppingCart },
-  { href: '/sales', label: 'Sales History', icon: ClipboardList },
-  { href: '/products', label: 'Products', icon: Package },
-  { href: '/categories', label: 'Categories', icon: Tags },
-  { href: '/inventory', label: 'Inventory', icon: Warehouse },
-  { href: '/purchases', label: 'Purchases', icon: Truck },
-  { href: '/suppliers', label: 'Suppliers', icon: Building2 },
-  { href: '/expenses', label: 'Expenses', icon: Receipt },
-  { href: '/debts', label: 'Debts / Credit', icon: HandCoins },
-  { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { href: '/pos', labelKey: 'nav.pos', icon: ShoppingCart },
+  { href: '/sales', labelKey: 'nav.sales', icon: ClipboardList },
+  { href: '/products', labelKey: 'nav.products', icon: Package },
+  { href: '/categories', labelKey: 'nav.categories', icon: Tags },
+  { href: '/inventory', labelKey: 'nav.inventory', icon: Warehouse },
+  { href: '/purchases', labelKey: 'nav.purchases', icon: Truck },
+  { href: '/suppliers', labelKey: 'nav.suppliers', icon: Building2 },
+  { href: '/expenses', labelKey: 'nav.expenses', icon: Receipt },
+  { href: '/debts', labelKey: 'nav.debts', icon: HandCoins },
+  { href: '/customers', labelKey: 'nav.customers', icon: Users },
+  { href: '/reports', labelKey: 'nav.reports', icon: BarChart3 },
+  { href: '/settings', labelKey: 'nav.settings', icon: Settings },
 ];
 
 export function Sidebar({
@@ -49,6 +50,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -69,7 +71,7 @@ export function Sidebar({
 
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'User';
   const roleLabel =
-    user?.role === 'ADMIN' ? 'Administrator' : user?.role.replaceAll('_', ' ') ?? '';
+    user?.role === 'ADMIN' ? t('common.owner') : user?.role.replaceAll('_', ' ') ?? '';
 
   if (!open) return null;
 
@@ -84,15 +86,14 @@ export function Sidebar({
         className="relative z-10 m-3 flex max-h-[calc(100dvh-1.5rem)] w-[min(290px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[26px] border border-white/80 bg-[rgba(255,255,255,0.78)] text-slate-800 shadow-[0_20px_50px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[28px] saturate-[140%] sm:m-4 sm:max-h-[calc(100dvh-2rem)] sm:w-[min(300px,calc(100vw-2rem))]"
         role="dialog"
         aria-modal="true"
-        aria-label="Navigation"
+        aria-label={t('common.navLabel')}
       >
-        {/* Branding — logo above full centered name */}
         <div className="relative shrink-0 px-5 pb-3 pt-5">
           <button
             type="button"
             className="absolute right-3.5 top-3.5 flex h-8 w-8 items-center justify-center rounded-full border border-white/85 bg-white/55 text-slate-600 shadow-[0_4px_12px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md transition hover:bg-white/75"
             onClick={() => onOpenChange(false)}
-            aria-label="Close sidebar"
+            aria-label={t('common.closeSidebar')}
           >
             <X className="h-3.5 w-3.5" strokeWidth={2.25} />
           </button>
@@ -135,7 +136,7 @@ export function Sidebar({
                   )}
                   strokeWidth={1.85}
                 />
-                <span className="font-medium tracking-[-0.01em]">{item.label}</span>
+                <span className="font-medium tracking-[-0.01em]">{t(item.labelKey)}</span>
               </Link>
             );
           })}
@@ -165,7 +166,7 @@ export function Sidebar({
                   }}
                 >
                   <LogOut className="h-4 w-4" />
-                  Sign out
+                  {t('common.signOut')}
                 </button>
               </div>
             )}

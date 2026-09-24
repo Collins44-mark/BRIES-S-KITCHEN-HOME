@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import { useLocale } from '@/contexts/locale-context';
 import { cn } from '@/lib/utils';
 
 export type RowAction = {
@@ -29,6 +30,7 @@ export function RowActionsMenu({
   align = 'end',
   className,
 }: RowActionsMenuProps) {
+  const { t } = useLocale();
   const items = actions.filter((a): a is RowAction => Boolean(a));
   if (items.length === 0) return null;
 
@@ -37,7 +39,7 @@ export function RowActionsMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          aria-label="Open actions"
+          aria-label={t('common.openActions')}
           className={cn(
             'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
             'border border-white/80 bg-white/55 text-slate-700',

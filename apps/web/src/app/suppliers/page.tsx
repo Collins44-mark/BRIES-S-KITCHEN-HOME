@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { RowActionsMenu } from '@/components/ui/row-actions-menu';
+import { useLocale } from '@/contexts/locale-context';
+import { statusKey } from '@/lib/i18n/dictionaries';
 import {
   createSupplier,
   listSuppliers,
@@ -26,6 +28,7 @@ export default function SuppliersPage() {
 }
 
 function SuppliersView() {
+  const { t } = useLocale();
   const params = useSearchParams();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -50,11 +53,11 @@ function SuppliersView() {
   const createMutation = useMutation({
     mutationFn: createSupplier,
     onSuccess: () => {
-      toast.success('Supplier created');
+      toast.success(t('common.saved'));
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to create supplier'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const updateMutation = useMutation({
@@ -70,21 +73,21 @@ function SuppliersView() {
       notes?: string | null;
     }) => updateSupplier(id, input),
     onSuccess: () => {
-      toast.success('Supplier updated');
+      toast.success(t('common.changesSaved'));
       setEditing(null);
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update supplier'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       setSupplierActive(id, isActive),
-    onSuccess: (_data, vars) => {
-      toast.success(vars.isActive ? 'Supplier activated' : 'Supplier deactivated');
+    onSuccess: () => {
+      toast.success(t('common.changesSaved'));
       queryClient.invalidateQueries({ queryKey: ['suppliers'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update supplier'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
@@ -113,14 +116,17 @@ function SuppliersView() {
     });
   }
 
+  function statusLabel(isActive: boolean) {
+    const key = statusKey(isActive ? 'ACTIVE' : 'INACTIVE');
+    return key ? t(key) : isActive ? t('common.active') : t('common.inactive');
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="page-title">Suppliers</h1>
-          <p className="page-subtitle">
-            Manage suppliers used when receiving stock purchases.
-          </p>
+          <h1 className="page-title">{t('suppliers.title')}</h1>
+          <p className="page-subtitle">{t('suppliers.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -130,23 +136,23 @@ function SuppliersView() {
           }}
           className="rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
         >
-          {showForm && !editing ? 'Close' : 'Add Supplier'}
+          {showForm && !editing ? t('common.close') : t('suppliers.add')}
         </button>
       </div>
 
       {showForm && !editing && (
         <form onSubmit={onCreate} className="glass-card grid gap-3 p-5 md:grid-cols-2">
-          <input name="name" required placeholder="Supplier name" className="field" />
-          <input name="phone" placeholder="Phone" className="field" />
-          <input name="email" type="email" placeholder="Email" className="field" />
-          <input name="address" placeholder="Address" className="field" />
-          <input name="notes" placeholder="Notes" className="field md:col-span-2" />
+          <input name="name" required placeholder={t('common.name')} className="field" />
+          <input name="phone" placeholder={t('common.phone')} className="field" />
+          <input name="email" type="email" placeholder={t('suppliers.email')} className="field" />
+          <input name="address" placeholder={t('suppliers.address')} className="field" />
+          <input name="notes" placeholder={t('common.notes')} className="field md:col-span-2" />
           <button
             type="submit"
             disabled={createMutation.isPending}
             className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white md:col-span-2 disabled:opacity-60"
           >
-            {createMutation.isPending ? 'Saving...' : 'Save Supplier'}
+            {createMutation.isPending ? t('common.loading') : t('common.save')}
           </button>
         </form>
       )}
@@ -157,32 +163,32 @@ function SuppliersView() {
             name="name"
             required
             defaultValue={editing.name}
-            placeholder="Supplier name"
+            placeholder={t('common.name')}
             className="field"
           />
           <input
             name="phone"
             defaultValue={editing.phone ?? ''}
-            placeholder="Phone"
+            placeholder={t('common.phone')}
             className="field"
           />
           <input
             name="email"
             type="email"
             defaultValue={editing.email ?? ''}
-            placeholder="Email"
+            placeholder={t('suppliers.email')}
             className="field"
           />
           <input
             name="address"
             defaultValue={editing.address ?? ''}
-            placeholder="Address"
+            placeholder={t('suppliers.address')}
             className="field"
           />
           <input
             name="notes"
             defaultValue={editing.notes ?? ''}
-            placeholder="Notes"
+            placeholder={t('common.notes')}
             className="field md:col-span-2"
           />
           <div className="flex flex-wrap gap-2 md:col-span-2">
@@ -191,14 +197,14 @@ function SuppliersView() {
               disabled={updateMutation.isPending}
               className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {updateMutation.isPending ? 'Saving...' : 'Update Supplier'}
+              {updateMutation.isPending ? t('common.loading') : t('suppliers.edit')}
             </button>
             <button
               type="button"
               onClick={() => setEditing(null)}
               className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>
@@ -208,7 +214,7 @@ function SuppliersView() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search suppliers..."
+          placeholder={t('common.search')}
           className="h-11 flex-1 rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300"
         />
         <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -218,7 +224,7 @@ function SuppliersView() {
             onChange={(e) => setIncludeInactive(e.target.checked)}
             className="rounded border-slate-300"
           />
-          Show inactive
+          {t('common.showInactive')}
         </label>
       </div>
 
@@ -227,19 +233,19 @@ function SuppliersView() {
           <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Address</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3">{t('common.name')}</th>
+              <th className="px-4 py-3">{t('common.phone')}</th>
+              <th className="px-4 py-3">{t('suppliers.email')}</th>
+              <th className="px-4 py-3">{t('suppliers.address')}</th>
+              <th className="px-4 py-3">{t('common.status')}</th>
+              <th className="px-4 py-3">{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && <TableLoadingRow colSpan={6} />}
             {isError && !isLoading && <TableErrorRow colSpan={6} onRetry={() => refetch()} />}
             {!isLoading && !isError && suppliers.length === 0 && (
-              <TableEmptyRow colSpan={6} message="No suppliers yet" />
+              <TableEmptyRow colSpan={6} message={t('suppliers.noSuppliers')} />
             )}
             {!isLoading &&
               !isError &&
@@ -257,7 +263,7 @@ function SuppliersView() {
                           : 'inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600'
                       }
                     >
-                      {s.isActive ? 'Active' : 'Inactive'}
+                      {statusLabel(s.isActive)}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -265,14 +271,14 @@ function SuppliersView() {
                       <RowActionsMenu
                         actions={[
                           {
-                            label: 'Edit',
+                            label: t('common.edit'),
                             onClick: () => {
                               setShowForm(false);
                               setEditing(s);
                             },
                           },
                           {
-                            label: s.isActive ? 'Deactivate' : 'Activate',
+                            label: s.isActive ? t('common.deactivate') : t('common.activate'),
                             disabled: toggleMutation.isPending,
                             tone: s.isActive ? 'danger' : 'default',
                             onClick: () =>

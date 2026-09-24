@@ -1,10 +1,13 @@
 'use client';
 
-export function TableLoadingRow({ colSpan, label = 'Loading...' }: { colSpan: number; label?: string }) {
+import { useLocale } from '@/contexts/locale-context';
+
+export function TableLoadingRow({ colSpan, label }: { colSpan: number; label?: string }) {
+  const { t } = useLocale();
   return (
     <tr>
       <td colSpan={colSpan} className="px-4 py-8 text-center text-slate-400">
-        {label}
+        {label ?? t('common.loading')}
       </td>
     </tr>
   );
@@ -27,17 +30,18 @@ export function TableErrorRow({
   colSpan: number;
   onRetry?: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <tr>
       <td colSpan={colSpan} className="px-4 py-8 text-center">
-        <p className="text-sm text-slate-600">Unable to load data. Please try again.</p>
+        <p className="text-sm text-slate-600">{t('common.unableLoad')}</p>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
             className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
           >
-            Retry
+            {t('common.retry')}
           </button>
         )}
       </td>
@@ -50,16 +54,17 @@ export function InlineEmpty({ message }: { message: string }) {
 }
 
 export function InlineError({ onRetry }: { onRetry?: () => void }) {
+  const { t } = useLocale();
   return (
     <div className="px-4 py-10 text-center">
-      <p className="text-sm text-slate-600">Unable to load data. Please try again.</p>
+      <p className="text-sm text-slate-600">{t('common.unableLoad')}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
           className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
         >
-          Retry
+          {t('common.retry')}
         </button>
       )}
     </div>

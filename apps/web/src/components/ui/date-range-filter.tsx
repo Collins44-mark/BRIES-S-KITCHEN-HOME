@@ -4,19 +4,21 @@ import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import type { DateRangePreset } from '@bries/types';
 import { useDateRange } from '@/contexts/date-range-context';
+import { useLocale } from '@/contexts/locale-context';
 import { cn } from '@/lib/utils';
 
-const DATE_OPTIONS: { value: DateRangePreset; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'this_week', label: 'This Week' },
-  { value: 'this_month', label: 'This Month' },
-  { value: 'custom', label: 'Custom Range' },
+const DATE_OPTIONS: { value: DateRangePreset; labelKey: string }[] = [
+  { value: 'today', labelKey: 'date.today' },
+  { value: 'yesterday', labelKey: 'date.yesterday' },
+  { value: 'this_week', labelKey: 'date.thisWeek' },
+  { value: 'this_month', labelKey: 'date.thisMonth' },
+  { value: 'custom', labelKey: 'date.custom' },
 ];
 
 /** Compact glass date filter for page headers (not the global top bar). */
 export function DateRangeFilter({ className }: { className?: string }) {
   const { preset, setPreset, label, setCustomRange } = useDateRange();
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -55,8 +57,8 @@ export function DateRangeFilter({ className }: { className?: string }) {
               )}
               onClick={() => {
                 if (opt.value === 'custom') {
-                  const from = prompt('From date (YYYY-MM-DD)');
-                  const to = prompt('To date (YYYY-MM-DD)');
+                  const from = prompt(t('common.fromDatePrompt'));
+                  const to = prompt(t('common.toDatePrompt'));
                   if (from && to) setCustomRange(from, to);
                 } else {
                   setPreset(opt.value);
@@ -64,7 +66,7 @@ export function DateRangeFilter({ className }: { className?: string }) {
                 setOpen(false);
               }}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </button>
           ))}
         </div>

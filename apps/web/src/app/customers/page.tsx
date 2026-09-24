@@ -10,6 +10,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 import {
   createCustomer,
   fetchCustomerAccountSummary,
@@ -31,6 +32,7 @@ export default function CustomersPage() {
 }
 
 function CustomersView() {
+  const { t } = useLocale();
   const { user } = useAuth();
   const params = useSearchParams();
   const queryClient = useQueryClient();
@@ -73,11 +75,11 @@ function CustomersView() {
   const createMutation = useMutation({
     mutationFn: createCustomer,
     onSuccess: () => {
-      toast.success('Customer created');
+      toast.success(t('common.saved'));
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to create customer'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const updateMutation = useMutation({
@@ -93,21 +95,21 @@ function CustomersView() {
       isWalkIn?: boolean;
     }) => updateCustomer(id, input),
     onSuccess: () => {
-      toast.success('Customer updated');
+      toast.success(t('common.changesSaved'));
       setEditing(null);
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update customer'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       setCustomerActive(id, isActive),
-    onSuccess: (_data, vars) => {
-      toast.success(vars.isActive ? 'Customer activated' : 'Customer deactivated');
+    onSuccess: () => {
+      toast.success(t('common.changesSaved'));
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update customer'),
+    onError: (err: Error) => toast.error(err.message || t('common.somethingWrong')),
   });
 
   function closeLedger() {
@@ -158,12 +160,33 @@ function CustomersView() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedId]);
 
+  function customerActions(c: CustomerListItem) {
+    return [
+      canRecordPayment && Number(c.outstandingBalance) > 0
+        ? { label: t('customers.recordPayment'), href: `/debts?customer=${c.id}` }
+        : null,
+      {
+        label: t('common.edit'),
+        onClick: () => {
+          setShowForm(false);
+          setEditing(c);
+        },
+      },
+      {
+        label: c.isActive ? t('common.deactivate') : t('common.activate'),
+        disabled: toggleMutation.isPending,
+        tone: c.isActive ? ('danger' as const) : ('default' as const),
+        onClick: () => toggleMutation.mutate({ id: c.id, isActive: !c.isActive }),
+      },
+    ];
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="page-title">Customers</h1>
-          <p className="page-subtitle">Registered customers and account balances.</p>
+          <h1 className="page-title">{t('customers.title')}</h1>
+          <p className="page-subtitle">{t('customers.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -173,26 +196,26 @@ function CustomersView() {
           }}
           className="min-h-11 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white"
         >
-          {showForm && !editing ? 'Close' : 'Add Customer'}
+          {showForm && !editing ? t('common.close') : t('customers.add')}
         </button>
       </div>
 
       {showForm && !editing && (
         <form onSubmit={onCreate} className="glass-card grid gap-3 p-5 md:grid-cols-2">
-          <input name="name" required placeholder="Full name" className="field" />
-          <input name="phone" placeholder="Phone e.g. 0712345678" className="field" />
-          <input name="address" placeholder="Address" className="field" />
-          <input name="notes" placeholder="Notes" className="field" />
+          <input name="name" required placeholder={t('common.name')} className="field" />
+          <input name="phone" placeholder={t('common.phone')} className="field" />
+          <input name="address" placeholder={t('suppliers.address')} className="field" />
+          <input name="notes" placeholder={t('common.notes')} className="field" />
           <label className="flex items-center gap-2 text-sm text-slate-600 md:col-span-2">
             <input type="checkbox" name="isWalkIn" className="rounded border-slate-300" />
-            Walk-in customer
+            {t('common.walkIn')}
           </label>
           <button
             type="submit"
             disabled={createMutation.isPending}
             className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white md:col-span-2 disabled:opacity-60"
           >
-            {createMutation.isPending ? 'Saving...' : 'Save Customer'}
+            {createMutation.isPending ? t('common.loading') : t('common.save')}
           </button>
         </form>
       )}
@@ -203,25 +226,25 @@ function CustomersView() {
             name="name"
             required
             defaultValue={editing.name}
-            placeholder="Full name"
+            placeholder={t('common.name')}
             className="field"
           />
           <input
             name="phone"
             defaultValue={editing.phone ?? ''}
-            placeholder="Phone e.g. 0712345678"
+            placeholder={t('common.phone')}
             className="field"
           />
           <input
             name="address"
             defaultValue={editing.address ?? ''}
-            placeholder="Address"
+            placeholder={t('suppliers.address')}
             className="field"
           />
           <input
             name="notes"
             defaultValue={editing.notes ?? ''}
-            placeholder="Notes"
+            placeholder={t('common.notes')}
             className="field"
           />
           <label className="flex items-center gap-2 text-sm text-slate-600 md:col-span-2">
@@ -231,41 +254,38 @@ function CustomersView() {
               defaultChecked={editing.isWalkIn}
               className="rounded border-slate-300"
             />
-            Walk-in customer
+            {t('common.walkIn')}
           </label>
           <div className="grid grid-cols-3 gap-2 md:col-span-2">
             <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <p className="text-[11px] text-slate-400">Purchases</p>
+              <p className="text-[11px] text-slate-400">{t('customers.purchases')}</p>
               <p className="mt-1 text-sm font-semibold">{formatTzs(editing.totalPurchases)}</p>
             </div>
             <div className="rounded-xl bg-slate-50 p-3 text-center">
-              <p className="text-[11px] text-slate-400">Paid</p>
+              <p className="text-[11px] text-slate-400">{t('customers.paid')}</p>
               <p className="mt-1 text-sm font-semibold">{formatTzs(editing.totalPaid)}</p>
             </div>
             <div className="rounded-xl bg-rose-50 p-3 text-center">
-              <p className="text-[11px] text-rose-400">Balance</p>
+              <p className="text-[11px] text-rose-400">{t('customers.balance')}</p>
               <p className="mt-1 text-sm font-semibold text-rose-600">
                 {formatTzs(editing.outstandingBalance)}
               </p>
             </div>
           </div>
-          <p className="text-xs text-slate-500 md:col-span-2">
-            Account balances are read-only and updated by sales and debt payments.
-          </p>
           <div className="flex gap-2 md:col-span-2">
             <button
               type="submit"
               disabled={updateMutation.isPending}
               className="rounded-xl bg-brand-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {updateMutation.isPending ? 'Saving...' : 'Update Customer'}
+              {updateMutation.isPending ? t('common.loading') : t('customers.edit')}
             </button>
             <button
               type="button"
               onClick={() => setEditing(null)}
               className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </form>
@@ -276,7 +296,7 @@ function CustomersView() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or phone..."
+            placeholder={t('customers.search')}
             className="field w-full max-w-full sm:max-w-md"
           />
           <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
@@ -286,7 +306,7 @@ function CustomersView() {
               onChange={(e) => setIncludeInactive(e.target.checked)}
               className="rounded border-slate-300"
             />
-            Show inactive
+            {t('common.showInactive')}
           </label>
           <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600">
             <input
@@ -295,29 +315,30 @@ function CustomersView() {
               onChange={(e) => setIncludeWalkIn(e.target.checked)}
               className="rounded border-slate-300"
             />
-            Show walk-in
+            {t('common.walkIn')}
           </label>
         </div>
 
-        {/* Mobile card list */}
         <div className="divide-y divide-slate-50 lg:hidden">
           {isLoading && (
-            <p className="px-4 py-8 text-center text-sm text-slate-400">Loading…</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-400">{t('common.loading')}</p>
           )}
           {isError && !isLoading && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-slate-600">Unable to load customers.</p>
+              <p className="text-sm text-slate-600">{t('common.unableLoad')}</p>
               <button
                 type="button"
                 onClick={() => refetch()}
                 className="mt-3 min-h-11 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
               >
-                Retry
+                {t('common.retry')}
               </button>
             </div>
           )}
           {!isLoading && !isError && customers.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-slate-400">No customers yet</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-400">
+              {t('customers.noCustomers')}
+            </p>
           )}
           {!isLoading &&
             !isError &&
@@ -334,12 +355,12 @@ function CustomersView() {
                         {c.name}
                         {c.isWalkIn && (
                           <span className="ml-2 text-[11px] font-normal text-slate-400">
-                            Walk-in
+                            {t('common.walkIn')}
                           </span>
                         )}
                         {!c.isActive && (
                           <span className="ml-2 text-[11px] font-normal text-slate-400">
-                            Inactive
+                            {t('common.inactive')}
                           </span>
                         )}
                       </p>
@@ -350,55 +371,38 @@ function CustomersView() {
                     </p>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
-                    <span>Purchases: {formatTzs(c.totalPurchases)}</span>
-                    <span className="text-right">Paid: {formatTzs(c.totalPaid)}</span>
+                    <span>
+                      {t('customers.purchases')}: {formatTzs(c.totalPurchases)}
+                    </span>
+                    <span className="text-right">
+                      {t('customers.paid')}: {formatTzs(c.totalPaid)}
+                    </span>
                   </div>
                 </button>
                 <div className="mt-2.5 flex justify-end">
-                  <RowActionsMenu
-                    actions={[
-                      canRecordPayment && Number(c.outstandingBalance) > 0
-                        ? { label: 'Record Payment', href: `/debts?customer=${c.id}` }
-                        : null,
-                      {
-                        label: 'Edit',
-                        onClick: () => {
-                          setShowForm(false);
-                          setEditing(c);
-                        },
-                      },
-                      {
-                        label: c.isActive ? 'Deactivate' : 'Activate',
-                        disabled: toggleMutation.isPending,
-                        tone: c.isActive ? 'danger' : 'default',
-                        onClick: () =>
-                          toggleMutation.mutate({ id: c.id, isActive: !c.isActive }),
-                      },
-                    ]}
-                  />
+                  <RowActionsMenu actions={customerActions(c)} />
                 </div>
               </div>
             ))}
         </div>
 
-        {/* Desktop / large tablet table */}
         <div className="table-scroll hidden lg:block">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-slate-50/70 text-xs uppercase text-slate-400">
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Purchases</th>
-                <th className="px-4 py-3">Paid</th>
-                <th className="px-4 py-3">Balance</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3">{t('common.name')}</th>
+                <th className="px-4 py-3">{t('common.phone')}</th>
+                <th className="px-4 py-3">{t('customers.purchases')}</th>
+                <th className="px-4 py-3">{t('customers.paid')}</th>
+                <th className="px-4 py-3">{t('customers.balance')}</th>
+                <th className="px-4 py-3">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && <TableLoadingRow colSpan={6} />}
               {isError && !isLoading && <TableErrorRow colSpan={6} onRetry={() => refetch()} />}
               {!isLoading && !isError && customers.length === 0 && (
-                <TableEmptyRow colSpan={6} message="No customers yet" />
+                <TableEmptyRow colSpan={6} message={t('customers.noCustomers')} />
               )}
               {!isLoading &&
                 !isError &&
@@ -410,10 +414,14 @@ function CustomersView() {
                     >
                       {c.name}
                       {c.isWalkIn && (
-                        <span className="ml-2 text-[11px] font-normal text-slate-400">Walk-in</span>
+                        <span className="ml-2 text-[11px] font-normal text-slate-400">
+                          {t('common.walkIn')}
+                        </span>
                       )}
                       {!c.isActive && (
-                        <span className="ml-2 text-[11px] font-normal text-slate-400">Inactive</span>
+                        <span className="ml-2 text-[11px] font-normal text-slate-400">
+                          {t('common.inactive')}
+                        </span>
                       )}
                     </td>
                     <td
@@ -442,27 +450,7 @@ function CustomersView() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end">
-                        <RowActionsMenu
-                          actions={[
-                            canRecordPayment && Number(c.outstandingBalance) > 0
-                              ? { label: 'Record Payment', href: `/debts?customer=${c.id}` }
-                              : null,
-                            {
-                              label: 'Edit',
-                              onClick: () => {
-                                setShowForm(false);
-                                setEditing(c);
-                              },
-                            },
-                            {
-                              label: c.isActive ? 'Deactivate' : 'Activate',
-                              disabled: toggleMutation.isPending,
-                              tone: c.isActive ? 'danger' : 'default',
-                              onClick: () =>
-                                toggleMutation.mutate({ id: c.id, isActive: !c.isActive }),
-                            },
-                          ]}
-                        />
+                        <RowActionsMenu actions={customerActions(c)} />
                       </div>
                     </td>
                   </tr>
@@ -482,7 +470,7 @@ function CustomersView() {
           <div className="relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-2xl backdrop-blur-xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <div className="min-w-0">
-                <h2 className="font-semibold text-slate-800">Customer Ledger</h2>
+                <h2 className="font-semibold text-slate-800">{t('customers.ledger')}</h2>
                 {selectedName && (
                   <p className="mt-0.5 truncate text-sm text-slate-500">{selectedName}</p>
                 )}
@@ -491,7 +479,7 @@ function CustomersView() {
                 type="button"
                 onClick={closeLedger}
                 className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
-                aria-label="Close ledger"
+                aria-label={t('common.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -499,37 +487,37 @@ function CustomersView() {
 
             <div className="overflow-y-auto p-5">
               {ledgerLoading && (
-                <p className="py-10 text-center text-sm text-slate-400">Loading ledger...</p>
+                <p className="py-10 text-center text-sm text-slate-400">{t('common.loading')}</p>
               )}
               {ledgerError && !ledgerLoading && (
                 <div className="py-10 text-center">
-                  <p className="text-sm text-slate-600">Unable to load ledger. Please try again.</p>
+                  <p className="text-sm text-slate-600">{t('common.unableLoad')}</p>
                   <button
                     type="button"
                     onClick={() => refetchLedger()}
                     className="mt-3 rounded-xl bg-brand-navy px-4 py-2 text-sm text-white"
                   >
-                    Retry
+                    {t('common.retry')}
                   </button>
                 </div>
               )}
-                  {accountSummary && !ledgerLoading && !ledgerError && (
+              {accountSummary && !ledgerLoading && !ledgerError && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl bg-slate-50 p-3">
-                      <p className="text-[11px] text-slate-400">Purchases</p>
+                      <p className="text-[11px] text-slate-400">{t('customers.purchases')}</p>
                       <p className="mt-1 text-sm font-semibold">
                         {formatTzs(accountSummary.totalPurchases)}
                       </p>
                     </div>
                     <div className="rounded-xl bg-slate-50 p-3">
-                      <p className="text-[11px] text-slate-400">Paid</p>
+                      <p className="text-[11px] text-slate-400">{t('customers.paid')}</p>
                       <p className="mt-1 text-sm font-semibold">
                         {formatTzs(accountSummary.totalPaid)}
                       </p>
                     </div>
                     <div className="rounded-xl bg-rose-50 p-3">
-                      <p className="text-[11px] text-rose-400">Balance</p>
+                      <p className="text-[11px] text-rose-400">{t('customers.balance')}</p>
                       <p className="mt-1 text-sm font-semibold text-rose-600">
                         {formatTzs(accountSummary.outstandingBalance)}
                       </p>
@@ -540,11 +528,13 @@ function CustomersView() {
                       href={`/debts?customer=${selectedId}`}
                       className="flex h-11 items-center justify-center rounded-xl bg-brand-navy text-sm font-semibold text-white"
                     >
-                      Record Payment
+                      {t('customers.recordPayment')}
                     </Link>
                   ) : null}
                   <div className="max-h-[360px] space-y-2 overflow-auto">
-                    <p className="py-6 text-center text-sm text-slate-400">No ledger entries yet.</p>
+                    <p className="py-6 text-center text-sm text-slate-400">
+                      {t('customers.noLedger')}
+                    </p>
                   </div>
                 </div>
               )}

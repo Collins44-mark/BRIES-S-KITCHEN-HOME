@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, useState } from 'react';
 import type { DateRangePreset } from '@bries/types';
+import { useLocale } from '@/contexts/locale-context';
 
 interface DateRangeContextValue {
   preset: DateRangePreset;
@@ -12,17 +13,18 @@ interface DateRangeContextValue {
   label: string;
 }
 
-const LABELS: Record<DateRangePreset, string> = {
-  today: 'Today',
-  yesterday: 'Yesterday',
-  this_week: 'This Week',
-  this_month: 'This Month',
-  custom: 'Custom Range',
+const DATE_KEYS: Record<DateRangePreset, string> = {
+  today: 'date.today',
+  yesterday: 'date.yesterday',
+  this_week: 'date.thisWeek',
+  this_month: 'date.thisMonth',
+  custom: 'date.custom',
 };
 
 const DateRangeContext = createContext<DateRangeContextValue | null>(null);
 
 export function DateRangeProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useLocale();
   const [preset, setPresetState] = useState<DateRangePreset>('today');
   const [from, setFrom] = useState<string | undefined>();
   const [to, setTo] = useState<string | undefined>();
@@ -48,9 +50,9 @@ export function DateRangeProvider({ children }: { children: React.ReactNode }) {
       from,
       to,
       setCustomRange,
-      label: LABELS[preset],
+      label: t(DATE_KEYS[preset]),
     }),
-    [preset, from, to],
+    [preset, from, to, t],
   );
 
   return <DateRangeContext.Provider value={value}>{children}</DateRangeContext.Provider>;

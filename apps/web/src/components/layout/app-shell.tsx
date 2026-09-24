@@ -6,9 +6,11 @@ import { Sidebar } from './sidebar';
 import { TopHeader } from './top-header';
 import { WelcomeToast } from './welcome-toast';
 import { useAuth } from '@/contexts/auth-context';
+import { useLocale } from '@/contexts/locale-context';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   /** Sidebar starts closed — only the three-dot trigger is visible. */
@@ -52,9 +54,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <footer className="flex flex-col gap-1 px-4 pb-4 text-[11px] text-slate-400 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2 sm:px-5 lg:px-6">
           <span className="break-words">
-            © 2026 BRIE&apos;S HOME &amp; KITCHEN. All rights reserved.
+            © 2026 BRIE&apos;S HOME &amp; KITCHEN. {t('common.allRights')}
           </span>
-          <span>Better Homes. Better Living.</span>
+          <span>{t('common.taglineFooter')}</span>
         </footer>
       </div>
     </div>

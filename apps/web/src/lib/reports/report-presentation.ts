@@ -1,5 +1,6 @@
 import { formatTzs } from '@/lib/utils';
 import { paymentMethodLabel } from '@/lib/receipt/types';
+import { paymentMethodKey, statusKey } from '@/lib/i18n/dictionaries';
 import type { DateRangePreset } from '@bries/types';
 
 export type ReportKey =
@@ -13,80 +14,82 @@ export type ReportKey =
 
 export type ReportColumnKind = 'text' | 'money' | 'date' | 'datetime' | 'status' | 'method' | 'number';
 
+export type ReportTranslateFn = (key: string, vars?: Record<string, string | number>) => string;
+
 export type ReportColumn = {
   key: string;
-  label: string;
+  labelKey: string;
   kind: ReportColumnKind;
 };
 
-export const REPORT_TITLES: Record<ReportKey, string> = {
-  sales: 'Sales Report',
-  profit: 'Profit Report',
-  expenses: 'Expenses Report',
-  inventory: 'Inventory Report',
-  debts: 'Debts Report',
-  payments: 'Payments Report',
-  purchases: 'Purchases Report',
+export const REPORT_TITLE_KEYS: Record<ReportKey, string> = {
+  sales: 'reports.salesTitle',
+  profit: 'reports.profitTitle',
+  expenses: 'reports.expensesTitle',
+  inventory: 'reports.inventoryTitle',
+  debts: 'reports.debtsTitle',
+  payments: 'reports.paymentsTitle',
+  purchases: 'reports.purchasesTitle',
 };
 
 /** Visible columns only — internal ids (UUID) are never included. */
 export const REPORT_COLUMNS: Record<ReportKey, ReportColumn[]> = {
   sales: [
-    { key: 'invoiceNumber', label: 'Invoice', kind: 'text' },
-    { key: 'customer', label: 'Customer', kind: 'text' },
-    { key: 'totalAmount', label: 'Total Amount', kind: 'money' },
-    { key: 'totalProfit', label: 'Profit', kind: 'money' },
-    { key: 'paymentStatus', label: 'Payment Status', kind: 'status' },
-    { key: 'soldAt', label: 'Date', kind: 'datetime' },
+    { key: 'invoiceNumber', labelKey: 'common.invoice', kind: 'text' },
+    { key: 'customer', labelKey: 'common.customer', kind: 'text' },
+    { key: 'totalAmount', labelKey: 'common.total', kind: 'money' },
+    { key: 'totalProfit', labelKey: 'common.profit', kind: 'money' },
+    { key: 'paymentStatus', labelKey: 'sales.paymentStatus', kind: 'status' },
+    { key: 'soldAt', labelKey: 'common.date', kind: 'datetime' },
   ],
   profit: [
-    { key: 'invoiceNumber', label: 'Invoice', kind: 'text' },
-    { key: 'customer', label: 'Customer', kind: 'text' },
-    { key: 'totalAmount', label: 'Revenue', kind: 'money' },
-    { key: 'totalProfit', label: 'Profit', kind: 'money' },
-    { key: 'paymentStatus', label: 'Payment Status', kind: 'status' },
-    { key: 'soldAt', label: 'Date', kind: 'datetime' },
+    { key: 'invoiceNumber', labelKey: 'common.invoice', kind: 'text' },
+    { key: 'customer', labelKey: 'common.customer', kind: 'text' },
+    { key: 'totalAmount', labelKey: 'reports.revenue', kind: 'money' },
+    { key: 'totalProfit', labelKey: 'common.profit', kind: 'money' },
+    { key: 'paymentStatus', labelKey: 'sales.paymentStatus', kind: 'status' },
+    { key: 'soldAt', labelKey: 'common.date', kind: 'datetime' },
   ],
   expenses: [
-    { key: 'title', label: 'Title', kind: 'text' },
-    { key: 'category', label: 'Category', kind: 'text' },
-    { key: 'amount', label: 'Amount', kind: 'money' },
-    { key: 'paymentMethod', label: 'Payment Method', kind: 'method' },
-    { key: 'expenseDate', label: 'Date', kind: 'datetime' },
+    { key: 'title', labelKey: 'expenses.titleField', kind: 'text' },
+    { key: 'category', labelKey: 'common.category', kind: 'text' },
+    { key: 'amount', labelKey: 'common.amount', kind: 'money' },
+    { key: 'paymentMethod', labelKey: 'pos.paymentMethod', kind: 'method' },
+    { key: 'expenseDate', labelKey: 'common.date', kind: 'datetime' },
   ],
   inventory: [
-    { key: 'sku', label: 'SKU', kind: 'text' },
-    { key: 'name', label: 'Product', kind: 'text' },
-    { key: 'category', label: 'Category', kind: 'text' },
-    { key: 'stockQuantity', label: 'Stock', kind: 'number' },
-    { key: 'reorderLevel', label: 'Reorder Level', kind: 'number' },
-    { key: 'costPrice', label: 'Cost', kind: 'money' },
-    { key: 'sellingPrice', label: 'Selling Price', kind: 'money' },
-    { key: 'stockValue', label: 'Stock Value', kind: 'money' },
-    { key: 'stockStatus', label: 'Status', kind: 'status' },
+    { key: 'sku', labelKey: 'products.sku', kind: 'text' },
+    { key: 'name', labelKey: 'products.product', kind: 'text' },
+    { key: 'category', labelKey: 'common.category', kind: 'text' },
+    { key: 'stockQuantity', labelKey: 'products.stock', kind: 'number' },
+    { key: 'reorderLevel', labelKey: 'products.reorderLevel', kind: 'number' },
+    { key: 'costPrice', labelKey: 'products.cost', kind: 'money' },
+    { key: 'sellingPrice', labelKey: 'products.sellingPrice', kind: 'money' },
+    { key: 'stockValue', labelKey: 'inventory.stockValue', kind: 'money' },
+    { key: 'stockStatus', labelKey: 'common.status', kind: 'status' },
   ],
   debts: [
-    { key: 'name', label: 'Customer', kind: 'text' },
-    { key: 'phone', label: 'Phone', kind: 'text' },
-    { key: 'outstandingBalance', label: 'Outstanding', kind: 'money' },
-    { key: 'totalPurchases', label: 'Total Purchases', kind: 'money' },
-    { key: 'totalPaid', label: 'Total Paid', kind: 'money' },
+    { key: 'name', labelKey: 'common.customer', kind: 'text' },
+    { key: 'phone', labelKey: 'common.phone', kind: 'text' },
+    { key: 'outstandingBalance', labelKey: 'debts.outstanding', kind: 'money' },
+    { key: 'totalPurchases', labelKey: 'customers.purchases', kind: 'money' },
+    { key: 'totalPaid', labelKey: 'customers.paid', kind: 'money' },
   ],
   payments: [
-    { key: 'invoice', label: 'Invoice', kind: 'text' },
-    { key: 'customer', label: 'Customer', kind: 'text' },
-    { key: 'amount', label: 'Amount', kind: 'money' },
-    { key: 'method', label: 'Method', kind: 'method' },
-    { key: 'paidAt', label: 'Date', kind: 'datetime' },
+    { key: 'invoice', labelKey: 'common.invoice', kind: 'text' },
+    { key: 'customer', labelKey: 'common.customer', kind: 'text' },
+    { key: 'amount', labelKey: 'common.amount', kind: 'money' },
+    { key: 'method', labelKey: 'common.method', kind: 'method' },
+    { key: 'paidAt', labelKey: 'common.date', kind: 'datetime' },
   ],
   purchases: [
-    { key: 'reference', label: 'Reference', kind: 'text' },
-    { key: 'supplier', label: 'Supplier', kind: 'text' },
-    { key: 'totalAmount', label: 'Total Amount', kind: 'money' },
-    { key: 'amountPaid', label: 'Amount Paid', kind: 'money' },
-    { key: 'status', label: 'Status', kind: 'status' },
-    { key: 'paymentStatus', label: 'Payment Status', kind: 'status' },
-    { key: 'purchaseDate', label: 'Date', kind: 'datetime' },
+    { key: 'reference', labelKey: 'common.reference', kind: 'text' },
+    { key: 'supplier', labelKey: 'common.supplier', kind: 'text' },
+    { key: 'totalAmount', labelKey: 'common.total', kind: 'money' },
+    { key: 'amountPaid', labelKey: 'purchases.amountPaid', kind: 'money' },
+    { key: 'status', labelKey: 'common.status', kind: 'status' },
+    { key: 'paymentStatus', labelKey: 'sales.paymentStatus', kind: 'status' },
+    { key: 'purchaseDate', labelKey: 'common.date', kind: 'datetime' },
   ],
 };
 
@@ -104,9 +107,13 @@ const STATUS_LABELS: Record<string, string> = {
   OUT_OF_STOCK: 'Out of Stock',
 };
 
-export function formatReportStatus(value: unknown): string {
+export function formatReportStatus(value: unknown, t?: ReportTranslateFn): string {
   if (value == null || value === '') return '—';
   const raw = String(value);
+  if (t) {
+    const key = statusKey(raw);
+    if (key) return t(key);
+  }
   if (STATUS_LABELS[raw]) return STATUS_LABELS[raw];
   return raw
     .toLowerCase()
@@ -116,9 +123,14 @@ export function formatReportStatus(value: unknown): string {
     .join(' ');
 }
 
-export function formatReportMethod(value: unknown): string {
+export function formatReportMethod(value: unknown, t?: ReportTranslateFn): string {
   if (value == null || value === '') return '—';
-  return paymentMethodLabel(String(value));
+  const raw = String(value);
+  if (t) {
+    const key = paymentMethodKey(raw);
+    if (key.startsWith('common.')) return t(key);
+  }
+  return paymentMethodLabel(raw);
 }
 
 const MONTHS = [
@@ -176,7 +188,11 @@ export function formatReportDateTime(value: unknown): string {
   return `${p.day} ${month} ${p.year}, ${hour}:${minute} ${dayPeriod}`.trim();
 }
 
-export function formatReportCell(kind: ReportColumnKind, value: unknown): string {
+export function formatReportCell(
+  kind: ReportColumnKind,
+  value: unknown,
+  t?: ReportTranslateFn,
+): string {
   switch (kind) {
     case 'money':
       return formatTzs(value as string | number);
@@ -185,9 +201,9 @@ export function formatReportCell(kind: ReportColumnKind, value: unknown): string
     case 'datetime':
       return formatReportDateTime(value);
     case 'status':
-      return formatReportStatus(value);
+      return formatReportStatus(value, t);
     case 'method':
-      return formatReportMethod(value);
+      return formatReportMethod(value, t);
     case 'number':
       if (value == null || value === '') return '—';
       return String(value);
@@ -215,9 +231,14 @@ export function formatReportPeriodLabel(opts: {
   label: string;
   from?: string;
   to?: string;
+  t?: ReportTranslateFn;
 }): string {
-  if (opts.tab === 'inventory') return 'Current stock';
-  if (opts.tab === 'debts') return 'Current outstanding';
+  if (opts.tab === 'inventory') {
+    return opts.t ? opts.t('reports.periodCurrentStock') : 'Current stock';
+  }
+  if (opts.tab === 'debts') {
+    return opts.t ? opts.t('reports.periodCurrentOutstanding') : 'Current outstanding';
+  }
 
   if (opts.preset === 'custom' && opts.from && opts.to) {
     return `${formatReportDate(opts.from)} – ${formatReportDate(opts.to)}`;
@@ -227,35 +248,58 @@ export function formatReportPeriodLabel(opts: {
 
 export type ReportSummaryItem = { label: string; value: string };
 
-export function buildReportSummaries(data: {
-  total?: string;
-  revenue?: string;
-  grossProfit?: string;
-  totalProfit?: string;
-  amountCollected?: string;
-  costOfGoodsSold?: string;
-  creditSales?: string;
-  count?: number;
-}): ReportSummaryItem[] {
+export function buildReportSummaries(
+  data: {
+    total?: string;
+    revenue?: string;
+    grossProfit?: string;
+    totalProfit?: string;
+    amountCollected?: string;
+    costOfGoodsSold?: string;
+    creditSales?: string;
+    count?: number;
+  },
+  t?: ReportTranslateFn,
+): ReportSummaryItem[] {
+  const label = (key: string, fallback: string) => (t ? t(key) : fallback);
   const items: ReportSummaryItem[] = [];
-  if (data.total !== undefined) items.push({ label: 'Total', value: formatTzs(data.total) });
-  if (data.revenue !== undefined) items.push({ label: 'Revenue', value: formatTzs(data.revenue) });
+  if (data.total !== undefined) {
+    items.push({ label: label('common.total', 'Total'), value: formatTzs(data.total) });
+  }
+  if (data.revenue !== undefined) {
+    items.push({ label: label('reports.revenue', 'Revenue'), value: formatTzs(data.revenue) });
+  }
   if (data.costOfGoodsSold !== undefined) {
-    items.push({ label: 'Cost of Goods Sold', value: formatTzs(data.costOfGoodsSold) });
+    items.push({
+      label: label('reports.costOfGoods', 'Cost of Goods Sold'),
+      value: formatTzs(data.costOfGoodsSold),
+    });
   }
   if (data.grossProfit !== undefined) {
-    items.push({ label: 'Gross Profit', value: formatTzs(data.grossProfit) });
+    items.push({
+      label: label('reports.grossProfit', 'Gross Profit'),
+      value: formatTzs(data.grossProfit),
+    });
   } else if (data.totalProfit !== undefined) {
-    items.push({ label: 'Total Profit', value: formatTzs(data.totalProfit) });
+    items.push({
+      label: label('reports.totalProfit', 'Total Profit'),
+      value: formatTzs(data.totalProfit),
+    });
   }
   if (data.amountCollected !== undefined) {
-    items.push({ label: 'Amount Collected', value: formatTzs(data.amountCollected) });
+    items.push({
+      label: label('reports.amountCollected', 'Amount Collected'),
+      value: formatTzs(data.amountCollected),
+    });
   }
   if (data.creditSales !== undefined) {
-    items.push({ label: 'Credit Sales', value: formatTzs(data.creditSales) });
+    items.push({
+      label: label('reports.creditSales', 'Credit Sales'),
+      value: formatTzs(data.creditSales),
+    });
   }
   if (data.count !== undefined) {
-    items.push({ label: 'Records', value: String(data.count) });
+    items.push({ label: label('reports.records', 'Records'), value: String(data.count) });
   }
   return items;
 }
