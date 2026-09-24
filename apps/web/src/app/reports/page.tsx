@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { FileText } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { InlineError } from '@/components/ui/query-status';
 import {
@@ -16,15 +18,17 @@ import {
 import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { useDateRange } from '@/contexts/date-range-context';
 import { formatTzs } from '@/lib/utils';
-
-type ReportKey =
-  | 'sales'
-  | 'profit'
-  | 'expenses'
-  | 'inventory'
-  | 'debts'
-  | 'payments'
-  | 'purchases';
+import { downloadReportPdf } from '@/lib/reports/download-report-pdf';
+import {
+  REPORT_COLUMNS,
+  REPORT_TITLES,
+  buildReportSummaries,
+  formatReportCell,
+  formatReportPeriodLabel,
+  formatReportStatus,
+  paymentStatusBadgeClass,
+  type ReportKey,
+} from '@/lib/reports/report-presentation';
 
 const TABS: { key: ReportKey; label: string }[] = [
   { key: 'sales', label: 'Sales' },
@@ -45,8 +49,9 @@ export default function ReportsPage() {
 }
 
 function ReportsView() {
-  const { preset, from, to } = useDateRange();
+  const { preset, from, to, label } = useDateRange();
   const [tab, setTab] = useState<ReportKey>('sales');
+  const [exporting, setExporting] = useState(false);
 
   const query = useQuery({
     queryKey: ['reports', tab, preset, from, to],
@@ -71,37 +76,45 @@ function ReportsView() {
     },
   });
 
-  function exportCsv() {
-    const rows = (query.data as { rows?: Array<Record<string, unknown>> })?.rows ?? [];
-    if (!rows.length) return;
-    const headers = Object.keys(rows[0]!);
-    const csv = [
-      headers.join(','),
-      ...rows.map((row) =>
-        headers.map((h) => `"${String(row[h] ?? '').replaceAll('"', '""')}"`).join(','),
-      ),
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${tab}-report.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   const data = query.data as {
     total?: string;
     revenue?: string;
     grossProfit?: string;
+    totalProfit?: string;
+    amountCollected?: string;
     costOfGoodsSold?: string;
+    creditSales?: string;
+    count?: number;
     rows?: Array<Record<string, unknown>>;
   };
 
   const rows = data?.rows ?? [];
+  const columns = REPORT_COLUMNS[tab];
+  const periodLabel = formatReportPeriodLabel({ tab, preset, label, from, to });
   const showTotals =
     data != null &&
     (data.total !== undefined || data.revenue !== undefined || data.grossProfit !== undefined);
+
+  async function onExportPdf() {
+    if (!query.data || query.isLoading || query.isError) {
+      toast.error('Report data is not ready to export.');
+      return;
+    }
+    setExporting(true);
+    try {
+      await downloadReportPdf({
+        tab,
+        periodLabel,
+        summaries: buildReportSummaries(data ?? {}),
+        rows,
+      });
+      toast.success(`${REPORT_TITLES[tab]} exported`);
+    } catch {
+      toast.error('Unable to export PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -114,8 +127,14 @@ function ReportsView() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateRangeFilter />
-          <button type="button" onClick={exportCsv} className="btn-secondary h-10 px-4 text-sm sm:h-11">
-            Export CSV
+          <button
+            type="button"
+            onClick={onExportPdf}
+            disabled={exporting || query.isLoading || query.isError}
+            className="btn-secondary inline-flex h-10 items-center gap-2 px-4 text-sm sm:h-11"
+          >
+            <FileText className="h-4 w-4 shrink-0 text-slate-500" strokeWidth={1.85} />
+            Export PDF
           </button>
         </div>
       </div>
@@ -173,31 +192,47 @@ function ReportsView() {
           </p>
         ) : (
           <div className="relative">
-            <p className="border-b border-slate-100 px-4 py-2 text-[11px] text-slate-400 lg:hidden">
+            <p className="border-b border-slate-100/80 px-4 py-2 text-[11px] text-slate-400 lg:hidden">
               Swipe sideways to see all columns
             </p>
             <div className="table-scroll border-t border-transparent">
               <table className="w-full min-w-[640px] text-left text-sm lg:min-w-[720px]">
-                <thead className="sticky top-0 z-[1] bg-slate-50/95 text-xs uppercase text-slate-400 backdrop-blur-sm">
+                <thead className="sticky top-0 z-[1] bg-white/70 text-[11px] font-semibold tracking-wide text-slate-500 backdrop-blur-md">
                   <tr>
-                    {Object.keys(rows[0]!).map((key) => (
-                      <th key={key} className="whitespace-nowrap px-3 py-3 font-medium sm:px-4">
-                        {key}
+                    {columns.map((col) => (
+                      <th key={col.key} className="whitespace-nowrap px-3 py-3 sm:px-4">
+                        {col.label}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, idx) => (
-                    <tr key={idx} className="border-t border-slate-50">
-                      {Object.values(row).map((value, i) => (
-                        <td
-                          key={i}
-                          className="whitespace-nowrap px-3 py-3 text-slate-700 sm:px-4"
-                        >
-                          {String(value ?? '—')}
-                        </td>
-                      ))}
+                    <tr key={idx} className="border-t border-slate-100/70">
+                      {columns.map((col) => {
+                        const raw = row[col.key];
+                        if (col.kind === 'status') {
+                          return (
+                            <td key={col.key} className="whitespace-nowrap px-3 py-3 sm:px-4">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-medium backdrop-blur-sm ${paymentStatusBadgeClass(raw)}`}
+                              >
+                                {formatReportStatus(raw)}
+                              </span>
+                            </td>
+                          );
+                        }
+                        return (
+                          <td
+                            key={col.key}
+                            className={`whitespace-nowrap px-3 py-3 text-slate-700 sm:px-4 ${
+                              col.kind === 'money' ? 'font-medium text-slate-900' : ''
+                            }`}
+                          >
+                            {formatReportCell(col.kind, raw)}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
