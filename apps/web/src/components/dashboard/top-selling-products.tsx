@@ -21,9 +21,12 @@ export function TopSellingProducts({ items }: { items: DashboardSummary['topSell
         <>
           <ul className="space-y-2 lg:hidden">
             {items.map((item) => (
-              <li key={item.productId} className="glass-row flex items-start justify-between gap-2 px-3 py-2.5">
+              <li
+                key={item.productId}
+                className="glass-row flex items-start justify-between gap-2 px-3.5 py-3"
+              >
                 <div className="flex min-w-0 items-start gap-2.5">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/70 text-[11px] font-semibold text-slate-500">
+                  <span className="w-4 shrink-0 pt-0.5 text-center text-[12px] font-semibold text-slate-400">
                     {item.rank}
                   </span>
                   <div className="min-w-0">
@@ -46,7 +49,7 @@ export function TopSellingProducts({ items }: { items: DashboardSummary['topSell
           <div className="table-scroll hidden lg:block">
             <table className="w-full min-w-[460px] text-left text-[13px]">
               <thead>
-                <tr className="border-b border-slate-200/50 text-[11px] uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-200/45 text-[11px] uppercase tracking-wide text-slate-400">
                   <th className="pb-2.5 pr-2 font-medium">#</th>
                   <th className="pb-2.5 font-medium">Product</th>
                   <th className="pb-2.5 font-medium">Base Qty Sold</th>
@@ -56,12 +59,12 @@ export function TopSellingProducts({ items }: { items: DashboardSummary['topSell
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.productId} className="border-b border-slate-100/70 last:border-0">
-                    <td className="py-2.5 pr-2 text-slate-400">{item.rank}</td>
-                    <td className="py-2.5 font-medium text-slate-900">{item.productName}</td>
-                    <td className="py-2.5 text-slate-600">{item.quantitySold} PCS</td>
-                    <td className="py-2.5 text-slate-700">{formatTzs(item.revenue)}</td>
-                    <td className="py-2.5 font-medium text-emerald-600">{formatTzs(item.profit)}</td>
+                  <tr key={item.productId} className="border-b border-slate-100/60 last:border-0">
+                    <td className="py-3 pr-2 text-slate-400">{item.rank}</td>
+                    <td className="py-3 font-medium text-slate-900">{item.productName}</td>
+                    <td className="py-3 text-slate-600">{item.quantitySold} PCS</td>
+                    <td className="py-3 text-slate-700">{formatTzs(item.revenue)}</td>
+                    <td className="py-3 font-medium text-emerald-600">{formatTzs(item.profit)}</td>
                   </tr>
                 ))}
               </tbody>

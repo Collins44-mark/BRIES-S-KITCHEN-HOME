@@ -23,7 +23,7 @@ export function PaymentMethodsCard({
 }) {
   return (
     <section className="glass-card flex h-full flex-col p-3.5 sm:p-[18px]">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-[15px] font-semibold text-slate-900">Payment Methods</h3>
         <Link href="/reports" className="view-all">
           View All
@@ -40,13 +40,15 @@ export function PaymentMethodsCard({
             return (
               <div
                 key={item.method}
-                className="glass-row flex items-center justify-between gap-3 px-3 py-2.5"
+                className="glass-row flex items-center justify-between gap-3 px-3.5 py-3"
               >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <GlassIcon icon={meta.icon} tone={meta.tone} className="h-8 w-8 rounded-[10px]" />
+                <div className="flex min-w-0 items-center gap-3">
+                  <GlassIcon icon={meta.icon} tone={meta.tone} />
                   <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-slate-900">{meta.label}</p>
-                    <p className="text-[12px] font-semibold text-slate-700">{formatTzs(item.amount)}</p>
+                    <p className="truncate text-[13px] font-semibold text-slate-900">{meta.label}</p>
+                    <p className="mt-0.5 text-[12px] font-medium text-slate-600">
+                      {formatTzs(item.amount)}
+                    </p>
                   </div>
                 </div>
                 <span className="shrink-0 text-[13px] font-semibold text-slate-500">{item.percent}%</span>

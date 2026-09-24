@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { PackagePlus, Receipt, ShoppingCart, UserPlus } from 'lucide-react';
+import { GlassIcon } from '@/components/ui/glass-icon';
 
 const ACTIONS = [
   {
@@ -9,24 +10,28 @@ const ACTIONS = [
     label: 'New Sale (POS)',
     icon: ShoppingCart,
     primary: true,
+    tone: 'slate' as const,
   },
   {
     href: '/products?new=1',
     label: 'Add Product',
     icon: PackagePlus,
     primary: false,
+    tone: 'blue' as const,
   },
   {
     href: '/customers?new=1',
     label: 'Add Customer',
     icon: UserPlus,
     primary: false,
+    tone: 'purple' as const,
   },
   {
     href: '/expenses?new=1',
     label: 'Record Expense',
     icon: Receipt,
     primary: false,
+    tone: 'green' as const,
   },
 ];
 
@@ -36,18 +41,29 @@ export function QuickActionsCard() {
       <h3 className="mb-3 text-[15px] font-semibold text-slate-900">Quick Actions</h3>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {ACTIONS.map((action) => {
-          const Icon = action.icon;
+          if (action.primary) {
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="btn-primary flex h-[52px] items-center gap-2.5 px-3 text-[12.5px]"
+              >
+                <action.icon className="h-4 w-4 text-white" strokeWidth={1.9} />
+                {action.label}
+              </Link>
+            );
+          }
           return (
             <Link
               key={action.href}
               href={action.href}
-              className={
-                action.primary
-                  ? 'btn-primary flex h-[52px] items-center gap-2 px-3 text-[12.5px]'
-                  : 'btn-secondary flex h-[52px] items-center gap-2 px-3 text-[12.5px]'
-              }
+              className="btn-secondary flex h-[52px] items-center gap-2.5 px-3 text-[12.5px]"
             >
-              <Icon className={`h-3.5 w-3.5 ${action.primary ? 'text-white' : 'text-slate-600'}`} />
+              <GlassIcon
+                icon={action.icon}
+                tone={action.tone}
+                className="!h-8 !w-8 !rounded-[10px]"
+              />
               {action.label}
             </Link>
           );

@@ -21,8 +21,8 @@ export function KpiCard({
   compact?: boolean;
 }) {
   return (
-    <div className="glass-card relative flex min-h-0 flex-col justify-between gap-2.5 p-3.5 transition duration-200 hover:bg-white/72 sm:min-h-[108px] sm:p-4 lg:p-[18px]">
-      <div className="flex min-w-0 items-center gap-2.5">
+    <div className="glass-card relative flex min-h-0 flex-col justify-between gap-2.5 p-3.5 transition duration-200 hover:bg-white/70 sm:min-h-[112px] sm:p-4 lg:p-5">
+      <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
         <GlassIcon icon={icon} tone={tone} />
         <p className="truncate text-[11px] font-medium leading-snug text-slate-500 sm:text-[13px]">
           {label}

@@ -28,15 +28,15 @@ export function TopHeader({ onToggleSidebar }: { onToggleSidebar: () => void }) 
           <MoreHorizontal className="h-5 w-5" />
         </button>
 
-        <div className="relative mx-auto min-w-0 max-w-xl flex-1">
+        <div className="relative mx-auto min-w-0 max-w-md flex-1 lg:max-w-lg">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             id="global-search"
             type="search"
             placeholder="Search products, customers..."
-            className="glass-control h-10 w-full pl-10 pr-3 text-[13px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-white/90 focus:ring-2 focus:ring-sky-100/60 sm:h-11 sm:pl-11 sm:pr-12 sm:text-[14px]"
+            className="glass-control h-10 w-full pl-10 pr-3 text-[13px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-white/90 focus:ring-2 focus:ring-sky-100/50 sm:h-11 sm:pl-11 sm:pr-12 sm:text-[14px]"
           />
-          <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200/70 bg-white/60 px-1.5 py-0.5 text-[10px] text-slate-400 lg:inline">
+          <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200/60 bg-white/55 px-1.5 py-0.5 text-[10px] text-slate-400 lg:inline">
             ⌘ K
           </kbd>
         </div>
