@@ -2,11 +2,13 @@
 
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { useAuth } from '@/contexts/auth-context';
 import {
   createCustomer,
   fetchCustomerAccountSummary,
@@ -28,8 +30,11 @@ export default function CustomersPage() {
 }
 
 function CustomersView() {
+  const { user } = useAuth();
   const params = useSearchParams();
   const queryClient = useQueryClient();
+  const canRecordPayment =
+    user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CASHIER';
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(params.get('new') === '1');
   const [editing, setEditing] = useState<CustomerListItem | null>(null);
@@ -349,6 +354,14 @@ function CustomersView() {
                   </div>
                 </button>
                 <div className="mt-2.5 flex flex-wrap gap-3">
+                  {canRecordPayment && Number(c.outstandingBalance) > 0 ? (
+                    <Link
+                      href={`/debts?customer=${c.id}`}
+                      className="min-h-10 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                    >
+                      Record Payment
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => {
@@ -435,6 +448,14 @@ function CustomersView() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
+                        {canRecordPayment && Number(c.outstandingBalance) > 0 ? (
+                          <Link
+                            href={`/debts?customer=${c.id}`}
+                            className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                          >
+                            Record Payment
+                          </Link>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => {
@@ -505,7 +526,7 @@ function CustomersView() {
                   </button>
                 </div>
               )}
-              {accountSummary && !ledgerLoading && !ledgerError && (
+                  {accountSummary && !ledgerLoading && !ledgerError && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl bg-slate-50 p-3">
@@ -527,6 +548,14 @@ function CustomersView() {
                       </p>
                     </div>
                   </div>
+                  {canRecordPayment && Number(accountSummary.outstandingBalance) > 0 ? (
+                    <Link
+                      href={`/debts?customer=${selectedId}`}
+                      className="flex h-11 items-center justify-center rounded-xl bg-brand-navy text-sm font-semibold text-white"
+                    >
+                      Record Payment
+                    </Link>
+                  ) : null}
                   <div className="max-h-[360px] space-y-2 overflow-auto">
                     <p className="py-6 text-center text-sm text-slate-400">No ledger entries yet.</p>
                   </div>

@@ -362,6 +362,7 @@ function PosView() {
           queryClient.invalidateQueries({ queryKey: ['customers'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
           queryClient.invalidateQueries({ queryKey: ['sales'] });
+          queryClient.invalidateQueries({ queryKey: ['debts'] });
           queryClient.invalidateQueries({ queryKey: ['reports'] });
           queryClient.invalidateQueries({ queryKey: ['inventory'] });
         },

@@ -1,16 +1,21 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useId, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { BrandLogo } from '@/components/brand/brand-logo';
+import styles from './login.module.css';
 
 export default function LoginForm() {
   const { login, user, loading } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
+  const emailId = useId();
+  const passwordId = useId();
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,56 +43,130 @@ export default function LoginForm() {
 
   if (loading || user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+      <div className={styles.page}>
+        <div className={styles.bg} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/login-bg.jpg"
+            alt=""
+            className={styles.bgImage}
+            decoding="async"
+          />
+          <div className={styles.bgOverlay} />
+        </div>
+        <div className={styles.orb} aria-hidden />
+        <div className={styles.greenGlass} aria-hidden />
+        <div className={styles.bootCenter}>
+          <div className={styles.bootSpinner} aria-hidden />
+          <span className={styles.visuallyHidden}>Loading</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="glass-card w-full max-w-md p-8">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <BrandLogo size={56} className="mb-4 shadow-soft" rounded="rounded-2xl" />
-          <h1 className="text-xl font-semibold text-slate-900">BRIE&apos;S HOME &amp; KITCHEN</h1>
-          <p className="mt-1 text-sm text-slate-500">Quality for a Better Home</p>
-        </div>
+    <div className={styles.page}>
+      <div className={styles.bg} aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/login-bg.jpg"
+          alt=""
+          className={styles.bgImage}
+          decoding="async"
+        />
+        <div className={styles.bgOverlay} />
+      </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Email or username
-            </label>
-            <input
-              id="email"
-              value={emailOrUsername}
-              onChange={(e) => setEmailOrUsername(e.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              required
-            />
+      <div className={styles.orb} aria-hidden />
+      <div className={styles.greenGlass} aria-hidden />
+      <div className={styles.greenGlassSoft} aria-hidden />
+
+      <div className={styles.stage}>
+        <div className={styles.card}>
+          <div className={styles.brandBlock}>
+            <div className={styles.logoGlass}>
+              <BrandLogo size={76} className={styles.logo} rounded="rounded-full" />
+            </div>
+            <h1 className={styles.title}>BRIE&apos;S HOME &amp; KITCHEN</h1>
+            <p className={styles.subtitle}>Quality for a Better Home</p>
+            <div className={styles.brandRule} aria-hidden />
           </div>
-          <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-700">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white/80 px-3 text-sm outline-none focus:border-sky-300 focus:ring-2 focus:ring-sky-100"
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-rose-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="h-11 w-full rounded-xl bg-brand-navy text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-          >
-            {submitting ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
+
+          <form onSubmit={onSubmit} className={styles.form} noValidate>
+            <div className={styles.field}>
+              <label htmlFor={emailId} className={styles.visuallyHidden}>
+                Email or username
+              </label>
+              <div className={styles.inputShell}>
+                <span className={styles.iconBadge} aria-hidden>
+                  <Mail className={styles.icon} strokeWidth={1.75} />
+                </span>
+                <input
+                  id={emailId}
+                  type="text"
+                  autoComplete="username"
+                  inputMode="email"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
+                  placeholder="Email or username"
+                  className={styles.input}
+                  required
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor={passwordId} className={styles.visuallyHidden}>
+                Password
+              </label>
+              <div className={styles.inputShell}>
+                <span className={styles.iconBadge} aria-hidden>
+                  <Lock className={styles.icon} strokeWidth={1.75} />
+                </span>
+                <input
+                  id={passwordId}
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className={styles.input}
+                  required
+                  disabled={submitting}
+                />
+                <button
+                  type="button"
+                  className={styles.eyeBtn}
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  disabled={submitting}
+                >
+                  {showPassword ? (
+                    <EyeOff className={styles.icon} strokeWidth={1.75} />
+                  ) : (
+                    <Eye className={styles.icon} strokeWidth={1.75} />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {error ? (
+              <div className={styles.error} role="alert">
+                {error}
+              </div>
+            ) : null}
+
+            <button type="submit" className={styles.submit} disabled={submitting}>
+              <span className={styles.submitLabel}>
+                {submitting ? 'Signing in…' : 'Sign in'}
+              </span>
+              <span className={styles.submitArrow} aria-hidden>
+                <ArrowRight className={styles.arrowIcon} strokeWidth={2.25} />
+              </span>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

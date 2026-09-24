@@ -1,11 +1,13 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { useAuth } from '@/contexts/auth-context';
 import {
   getCustomerDebtDetails,
   listDebtors,
@@ -15,21 +17,72 @@ import {
   type DebtPaymentMethod,
   type OutstandingSale,
 } from '@/lib/supabase/debts';
+import { getSaleById } from '@/lib/supabase/sales-history';
 import { formatTzs } from '@/lib/utils';
 
 export default function DebtsPage() {
   return (
     <AppShell>
-      <DebtsView />
+      <Suspense fallback={<div className="glass-card h-40 animate-pulse bg-white/40" />}>
+        <DebtsView />
+      </Suspense>
     </AppShell>
   );
 }
 
 function DebtsView() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const canRecordPayment =
+    user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CASHIER';
+
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [payingSale, setPayingSale] = useState<OutstandingSale | null>(null);
+  const [deepLinkSaleId, setDeepLinkSaleId] = useState<string | null>(null);
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false);
+
+  // Deep-link: /debts?customer=<id> and/or /debts?sale=<id>
+  useEffect(() => {
+    if (deepLinkHandled) return;
+    const customerParam = searchParams.get('customer')?.trim() || null;
+    const saleParam = searchParams.get('sale')?.trim() || null;
+    if (!customerParam && !saleParam) {
+      setDeepLinkHandled(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function applyDeepLink() {
+      try {
+        if (saleParam) {
+          const sale = await getSaleById(saleParam);
+          if (cancelled) return;
+          if (sale.customerId) {
+            setSelectedId(sale.customerId);
+            setDeepLinkSaleId(sale.id);
+          } else {
+            toast.error('This sale has no customer account to record a payment against.');
+          }
+        } else if (customerParam) {
+          setSelectedId(customerParam);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(err instanceof Error ? err.message : 'Unable to open debt payment.');
+        }
+      } finally {
+        if (!cancelled) setDeepLinkHandled(true);
+      }
+    }
+
+    void applyDeepLink();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, deepLinkHandled]);
 
   const {
     data,
@@ -53,6 +106,20 @@ function DebtsView() {
     queryFn: () => getCustomerDebtDetails(selectedId!),
     enabled: !!selectedId,
   });
+
+  // After detail loads from a sale deep-link, open the payment form for that sale.
+  useEffect(() => {
+    if (!deepLinkSaleId || !detail) return;
+    const match = detail.outstandingSales.find((s) => s.id === deepLinkSaleId);
+    if (!canRecordPayment) {
+      toast.error('Your role can view debts but cannot record payments.');
+    } else if (match) {
+      setPayingSale(match);
+    } else {
+      toast.error('That sale has no outstanding amount due.');
+    }
+    setDeepLinkSaleId(null);
+  }, [deepLinkSaleId, detail, canRecordPayment]);
 
   const payMutation = useMutation({
     mutationFn: recordDebtPayment,
@@ -174,6 +241,7 @@ function DebtsView() {
               ? detailErrorObj.message
               : 'Unable to load customer debt details.'
           }
+          canRecordPayment={canRecordPayment}
           onBack={() => {
             setPayingSale(null);
             setSelectedId(null);
@@ -183,7 +251,7 @@ function DebtsView() {
         />
       )}
 
-      {payingSale && selectedId && detail && (
+      {payingSale && selectedId && detail && canRecordPayment && (
         <DebtPaymentModal
           customerId={selectedId}
           customerName={detail.name}
@@ -204,6 +272,7 @@ function DebtDetailModal({
   loading,
   error,
   errorMessage,
+  canRecordPayment,
   onBack,
   onRetry,
   onPaySale,
@@ -212,6 +281,7 @@ function DebtDetailModal({
   loading: boolean;
   error: boolean;
   errorMessage: string;
+  canRecordPayment: boolean;
   onBack: () => void;
   onRetry: () => void;
   onPaySale: (sale: OutstandingSale) => void;
@@ -328,7 +398,9 @@ function DebtDetailModal({
                           <th className="px-3 py-2.5 font-medium">Paid</th>
                           <th className="px-3 py-2.5 font-medium">Due</th>
                           <th className="px-3 py-2.5 font-medium">Status</th>
-                          <th className="px-3 py-2.5 font-medium" />
+                          {canRecordPayment ? (
+                            <th className="px-3 py-2.5 font-medium" />
+                          ) : null}
                         </tr>
                       </thead>
                       <tbody>
@@ -346,21 +418,28 @@ function DebtDetailModal({
                               {formatTzs(sale.amountDue)}
                             </td>
                             <td className="px-3 py-2.5 text-slate-600">{sale.paymentStatus}</td>
-                            <td className="px-3 py-2.5 text-right">
-                              <button
-                                type="button"
-                                onClick={() => onPaySale(sale)}
-                                className="rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white"
-                              >
-                                Record payment
-                              </button>
-                            </td>
+                            {canRecordPayment ? (
+                              <td className="px-3 py-2.5 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => onPaySale(sale)}
+                                  className="rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-semibold text-white"
+                                >
+                                  Record payment
+                                </button>
+                              </td>
+                            ) : null}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 )}
+                {!canRecordPayment ? (
+                  <p className="mt-2 text-xs text-slate-500">
+                    View only — recording debt payments requires Admin, Manager, or Cashier.
+                  </p>
+                ) : null}
               </div>
 
               <div>

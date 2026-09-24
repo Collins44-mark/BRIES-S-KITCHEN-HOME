@@ -8,6 +8,7 @@ Place your business logo and profile images here.
 |------|----------|--------|
 | `logo.svg` | Default brand mark (sidebar, login, settings) | Replace with your SVG logo |
 | `logo.png` | Preferred brand mark if present | Drop a PNG here to override the SVG |
+| `login-bg.jpg` | Full-screen login background | Warm kitchen/home photograph |
 | `avatar.png` | Optional default user avatar | Used when a user has no custom photo |
 
 ## How to replace the logo

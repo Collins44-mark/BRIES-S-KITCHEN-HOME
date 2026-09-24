@@ -19,11 +19,19 @@ type SaleItemRow = {
   line_profit: string | number;
 };
 
+type SalePaymentRow = {
+  amount: string | number;
+  method: 'CASH' | 'MPESA' | 'BANK' | 'CREDIT';
+  paid_at: string;
+};
+
 type SaleAggRow = {
   total_amount: string | number;
   total_profit: string | number;
   amount_due: string | number;
+  sold_at: string;
   items?: SaleItemRow[] | null;
+  payments?: SalePaymentRow[] | null;
 };
 
 type PaymentRow = {
@@ -193,9 +201,12 @@ function emptySummary(): DashboardSummary {
 /**
  * Read-only dashboard summary from Supabase.
  *
- * Aggregation approach: date/status-filtered row sets are loaded via PostgREST,
- * then totals are summed in cents on the client (no RPC / no Nest). Datasets
- * stay bounded by the selected sold_at / paid_at window.
+ * Money semantics (Phase 5B):
+ * - Total Sales: SUM(completed sales.total_amount) in sold_at range
+ * - Credit Sales: credit created at sale time = amount_due + later debt
+ *   repayments on that sale (paid_at > sold_at) — historically stable
+ * - Amount Collected: SUM(CASH/MPESA/BANK payments) in paid_at range
+ * - Outstanding Debts / Top Debtors: current account balances (not dated)
  */
 export async function getDashboardSummary(
   preset: DateRangePreset = 'today',
@@ -211,7 +222,7 @@ export async function getDashboardSummary(
 
   const [salesResult, previousSalesResult, paymentsResult, debtsResult] =
     await Promise.all([
-      // COMPLETED sales in range + nested sale_items (top products).
+      // COMPLETED sales in range + nested items/payments (credit-at-creation).
       supabase
         .from('sales')
         .select(
@@ -219,6 +230,7 @@ export async function getDashboardSummary(
           total_amount,
           total_profit,
           amount_due,
+          sold_at,
           items:sale_items (
             product_id,
             product_name,
@@ -226,6 +238,11 @@ export async function getDashboardSummary(
             base_quantity,
             line_total,
             line_profit
+          ),
+          payments (
+            amount,
+            method,
+            paid_at
           )
         `,
         )
@@ -238,11 +255,11 @@ export async function getDashboardSummary(
         .eq('status', 'COMPLETED')
         .gte('sold_at', prevFromIso)
         .lte('sold_at', prevToIso),
-      // Actual payment rows only; CREDIT excluded.
+      // Amount Collected: money received in period (sale-time + later debt repayments).
       supabase
         .from('payments')
         .select('amount, method')
-        .neq('method', 'CREDIT')
+        .in('method', ['CASH', 'MPESA', 'BANK'])
         .gte('paid_at', fromIso)
         .lte('paid_at', toIso),
       // Current balances — not date-filtered.
@@ -274,7 +291,25 @@ export async function getDashboardSummary(
   for (const sale of sales) {
     totalSalesCents += toCents(sale.total_amount);
     totalProfitCents += toCents(sale.total_profit);
-    creditSalesCents += toCents(sale.amount_due);
+    // Credit created at sale time (stable historically):
+    // current amount_due + later money payments on this sale (paid_at > sold_at).
+    // Same-transaction sale payments share sold_at/paid_at via now() and are excluded.
+    let laterPaymentsCents = 0;
+    const soldAtMs = Date.parse(sale.sold_at);
+    for (const payment of sale.payments ?? []) {
+      if (
+        payment.method !== 'CASH' &&
+        payment.method !== 'MPESA' &&
+        payment.method !== 'BANK'
+      ) {
+        continue;
+      }
+      const paidAtMs = Date.parse(payment.paid_at);
+      if (Number.isFinite(soldAtMs) && Number.isFinite(paidAtMs) && paidAtMs > soldAtMs) {
+        laterPaymentsCents += toCents(payment.amount);
+      }
+    }
+    creditSalesCents += toCents(sale.amount_due) + laterPaymentsCents;
   }
 
   let previousSalesCents = 0;
@@ -284,8 +319,13 @@ export async function getDashboardSummary(
     previousProfitCents += toCents(sale.total_profit);
   }
 
-  // Amount Collected = Total Sales − Credit Sales (amount_due), not sum of payments.
-  const amountCollectedCents = totalSalesCents - creditSalesCents;
+  // Amount Collected = actual money received in the selected paid_at window.
+  let amountCollectedCents = 0;
+  for (const payment of payments) {
+    if (payment.method === 'CASH' || payment.method === 'MPESA' || payment.method === 'BANK') {
+      amountCollectedCents += toCents(payment.amount);
+    }
+  }
 
   const productAgg = new Map<
     string,

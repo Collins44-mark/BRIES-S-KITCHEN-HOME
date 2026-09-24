@@ -72,6 +72,12 @@ function mapDebtError(message: string): Error {
   if (/row-level security|permission|policy/i.test(raw)) {
     return new Error('You do not have permission to view debts.');
   }
+  if (/sale_id is required/i.test(raw)) {
+    return new Error('Select a sale with an outstanding balance.');
+  }
+  if (/only allowed for completed sales/i.test(raw)) {
+    return new Error('Debt payments are only allowed for completed sales.');
+  }
   if (/customer_id is required/i.test(raw)) {
     return new Error('A customer is required.');
   }
@@ -254,7 +260,7 @@ export async function getCustomerDebtDetails(
     )
     .eq('customer_id', customerId)
     .gt('amount_due', 0)
-    .neq('status', 'CANCELLED')
+    .eq('status', 'COMPLETED')
     .order('sold_at', { ascending: false });
 
   if (salesError) throw mapDebtError(salesError.message);

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { ArrowLeft, Download, Printer, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
@@ -53,6 +54,8 @@ function SalesView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const showCostProfit = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canRecordPayment =
+    user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CASHIER';
 
   const {
     data: sales = [],
@@ -181,6 +184,7 @@ function SalesView() {
             detailErrorObj instanceof Error ? detailErrorObj.message : 'Unable to load sale detail.'
           }
           showCostProfit={showCostProfit}
+          canRecordPayment={canRecordPayment}
           onBack={() => setSelectedId(null)}
           onRetry={() => refetchDetail()}
         />
@@ -195,6 +199,7 @@ function SaleDetailModal({
   error,
   errorMessage,
   showCostProfit,
+  canRecordPayment,
   onBack,
   onRetry,
 }: {
@@ -203,12 +208,20 @@ function SaleDetailModal({
   error: boolean;
   errorMessage: string;
   showCostProfit: boolean;
+  canRecordPayment: boolean;
   onBack: () => void;
   onRetry: () => void;
 }) {
   const itemColSpan = showCostProfit ? 8 : 6;
   const [pdfBusy, setPdfBusy] = useState(false);
   const [printBusy, setPrintBusy] = useState(false);
+
+  const showRecordPayment =
+    canRecordPayment &&
+    detail != null &&
+    detail.status === 'COMPLETED' &&
+    detail.customerId != null &&
+    Number(detail.amountDue) > 0;
 
   /** Historical reprint: no POS-session cashReceived/changeDue — omit those lines. */
   async function handleDownloadPdf() {
@@ -518,6 +531,14 @@ function SaleDetailModal({
                   <ArrowLeft className="h-4 w-4" />
                   Close
                 </button>
+                {showRecordPayment ? (
+                  <Link
+                    href={`/debts?sale=${detail.id}`}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-medium text-emerald-800"
+                  >
+                    Record Payment
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
