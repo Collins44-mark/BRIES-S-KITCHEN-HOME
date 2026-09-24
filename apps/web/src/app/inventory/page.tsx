@@ -190,7 +190,7 @@ function InventoryView() {
               <thead className="sticky top-0 bg-white/90 text-xs uppercase text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Qty</th>
+                  <th className="px-4 py-3">Qty (base)</th>
                   <th className="px-4 py-3">Status</th>
                 </tr>
               </thead>
@@ -256,7 +256,7 @@ function InventoryView() {
                 <tr>
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Qty</th>
+                  <th className="px-4 py-3">Qty (base)</th>
                 </tr>
               </thead>
               <tbody>
@@ -397,7 +397,7 @@ function InventoryDetailModal({
             <div className="space-y-6">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-slate-100 bg-white/60 p-4">
-                  <p className="text-xs uppercase text-slate-400">Current stock</p>
+                  <p className="text-xs uppercase text-slate-400">Current stock (base)</p>
                   <p className="mt-1 text-2xl font-semibold text-slate-900">
                     {detail.stockQuantity} {detail.unit}
                   </p>
@@ -452,6 +452,7 @@ function InventoryDetailModal({
                         </div>
                         <p className="shrink-0 font-medium text-slate-900">
                           {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                          <span className="ml-1 text-xs font-normal text-slate-400">base</span>
                         </p>
                       </li>
                     ))}

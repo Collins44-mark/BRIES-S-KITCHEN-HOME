@@ -14,6 +14,7 @@ type SaleItemRow = {
   product_id: string;
   product_name: string;
   quantity: number;
+  base_quantity: number | null;
   line_total: string | number;
   line_profit: string | number;
 };
@@ -82,6 +83,14 @@ function percentChange(current: MoneyCents, previous: MoneyCents): number | null
 function percentOf(part: MoneyCents, whole: MoneyCents): number {
   if (whole <= 0) return 0;
   return Math.round((part / whole) * 100);
+}
+
+/** Physical base qty for dashboard metrics (pre- and post-multi-unit rows). */
+function itemBaseQuantity(item: SaleItemRow): number {
+  if (item.base_quantity != null && Number.isFinite(Number(item.base_quantity))) {
+    return Number(item.base_quantity);
+  }
+  return Number(item.quantity) || 0;
 }
 
 /**
@@ -214,6 +223,7 @@ export async function getDashboardSummary(
             product_id,
             product_name,
             quantity,
+            base_quantity,
             line_total,
             line_profit
           )
@@ -284,7 +294,12 @@ export async function getDashboardSummary(
   let itemsSold = 0;
   for (const sale of sales) {
     for (const item of sale.items ?? []) {
-      itemsSold += item.quantity;
+      // Physical base units (COALESCE(base_quantity, quantity)) — not mixed selling units.
+      const baseQty =
+        item.base_quantity != null && Number.isFinite(Number(item.base_quantity))
+          ? Number(item.base_quantity)
+          : item.quantity;
+      itemsSold += baseQty;
       const existing = productAgg.get(item.product_id) ?? {
         productId: item.product_id,
         productName: item.product_name,
@@ -292,7 +307,7 @@ export async function getDashboardSummary(
         revenue: 0,
         profit: 0,
       };
-      existing.qty += item.quantity;
+      existing.qty += baseQty;
       existing.revenue += toCents(item.line_total);
       existing.profit += toCents(item.line_profit);
       productAgg.set(item.product_id, existing);

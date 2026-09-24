@@ -63,6 +63,10 @@ export interface DashboardSummary {
   debtorsCount: number;
   expensesTotal: string;
   expensesCount: number;
+  /**
+   * Physical base units sold in range:
+   * SUM(COALESCE(sale_items.base_quantity, sale_items.quantity)).
+   */
   itemsSold: number;
   topSellingProducts: TopSellingProduct[];
   stockStatus: StockStatusSummary;
@@ -75,6 +79,11 @@ export interface TopSellingProduct {
   rank: number;
   productId: string;
   productName: string;
+  /**
+   * Physical base units sold in range:
+   * SUM(COALESCE(sale_items.base_quantity, sale_items.quantity)).
+   * Not mixed selling-unit quantities (SET + PCS).
+   */
   quantitySold: number;
   revenue: string;
   profit: string;

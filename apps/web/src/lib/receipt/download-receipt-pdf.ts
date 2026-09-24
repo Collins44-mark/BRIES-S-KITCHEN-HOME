@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { formatTzs } from '@/lib/utils';
 import {
+  formatReceiptLineBaseHint,
+  formatReceiptLineQuantity,
   paymentMethodLabel,
   receiptFilename,
   type SaleReceiptData,
@@ -17,6 +19,7 @@ function formatDateTime(iso: string): string {
 
 /**
  * Client-side A4 PDF from stored receipt values only.
+ * Line qty/unit come from sale_items historical snapshots.
  */
 export async function downloadSaleReceiptPdf(data: SaleReceiptData): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -43,6 +46,13 @@ export async function downloadSaleReceiptPdf(data: SaleReceiptData): Promise<voi
     y += 6;
   };
 
+  const ensureSpace = (needed: number) => {
+    if (y + needed > 280) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
   line("BRIE'S HOME & KITCHEN", { bold: true, size: 16 });
   line('Sale Receipt', { size: 11, color: [100, 116, 139] });
   y += 2;
@@ -62,29 +72,48 @@ export async function downloadSaleReceiptPdf(data: SaleReceiptData): Promise<voi
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
   doc.text('Item', marginX, y);
-  doc.text('Qty', marginX + contentWidth * 0.52, y);
-  doc.text('Price', marginX + contentWidth * 0.64, y);
+  doc.text('Qty / Price', marginX + contentWidth * 0.48, y);
   doc.text('Total', pageWidth - marginX, y, { align: 'right' });
   y += 5;
   doc.setDrawColor(241, 245, 249);
   doc.line(marginX, y, pageWidth - marginX, y);
   y += 6;
 
-  doc.setTextColor(30, 41, 59);
   for (const item of data.items) {
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
+    ensureSpace(22);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    const nameLines = doc.splitTextToSize(item.productName, contentWidth * 0.46);
+    doc.text(nameLines, marginX, y);
+
+    const qtyLabel = formatReceiptLineQuantity(item);
+    const baseHint = formatReceiptLineBaseHint(item);
+    const midX = marginX + contentWidth * 0.48;
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    const nameLines = doc.splitTextToSize(item.productName, contentWidth * 0.5);
-    doc.text(nameLines, marginX, y);
-    const nameHeight = nameLines.length * 5;
-    doc.text(String(item.quantity), marginX + contentWidth * 0.52, y);
-    doc.text(formatTzs(item.unitPrice), marginX + contentWidth * 0.64, y);
+    doc.text(qtyLabel, midX, y);
     doc.text(formatTzs(item.lineTotal), pageWidth - marginX, y, { align: 'right' });
-    y += Math.max(nameHeight, 6) + 2;
+
+    let blockH = Math.max(nameLines.length * 5, 5);
+    y += 5;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`@ ${formatTzs(item.unitPrice)}`, midX, y);
+    blockH += 4;
+    y += 4;
+    if (baseHint) {
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(baseHint, midX, y);
+      blockH += 4;
+      y += 4;
+    }
+    y += Math.max(2, 6 - (blockH > 10 ? 0 : 2));
+    doc.setDrawColor(248, 250, 252);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    y += 5;
   }
 
   y += 2;
@@ -98,7 +127,7 @@ export async function downloadSaleReceiptPdf(data: SaleReceiptData): Promise<voi
   y += 2;
 
   if (data.payments.length === 0) {
-    row('Payments', '—');
+    row('Payment', '—');
   } else {
     for (const p of data.payments) {
       const label = paymentMethodLabel(p.method);
@@ -107,13 +136,13 @@ export async function downloadSaleReceiptPdf(data: SaleReceiptData): Promise<voi
     }
   }
 
-  row('Amount paid', formatTzs(data.amountPaid), true);
-  row('Amount due', formatTzs(data.amountDue));
-  row('Payment status', data.paymentStatus);
+  row('Paid', formatTzs(data.amountPaid), true);
+  row('Due', formatTzs(data.amountDue));
+  row('Status', data.paymentStatus);
 
   if (data.cashReceived != null && Number(data.cashReceived) > 0) {
     y += 2;
-    row('Cash received', formatTzs(data.cashReceived));
+    row('Cash tendered', formatTzs(data.cashReceived));
     if (data.changeDue != null && Number(data.changeDue) > 0) {
       row('Change', formatTzs(data.changeDue), true);
     }
@@ -123,7 +152,7 @@ export async function downloadSaleReceiptPdf(data: SaleReceiptData): Promise<voi
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(10);
   doc.setTextColor(100, 116, 139);
-  doc.text('Thank you for shopping at BRIE\'S HOME & KITCHEN.', pageWidth / 2, y, {
+  doc.text("Thank you for shopping at BRIE'S HOME & KITCHEN.", pageWidth / 2, y, {
     align: 'center',
   });
 

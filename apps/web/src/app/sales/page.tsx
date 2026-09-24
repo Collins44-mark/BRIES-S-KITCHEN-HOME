@@ -2,14 +2,20 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Search, X } from 'lucide-react';
+import { ArrowLeft, Download, Printer, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
+import { printSaleReceipt } from '@/components/receipt/sale-receipt';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
 import { useAuth } from '@/contexts/auth-context';
 import { useDateRange } from '@/contexts/date-range-context';
+import { downloadSaleReceiptPdf } from '@/lib/receipt/download-receipt-pdf';
+import { toSaleReceiptData } from '@/lib/receipt/types';
 import {
   getSaleById,
   listSales,
+  formatSaleItemBaseHint,
+  formatSaleItemQuantity,
   type SaleDetail,
   type SaleListItem,
   type SalePaymentStatus,
@@ -199,6 +205,34 @@ function SaleDetailModal({
   onRetry: () => void;
 }) {
   const itemColSpan = showCostProfit ? 8 : 6;
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [printBusy, setPrintBusy] = useState(false);
+
+  /** Historical reprint: no POS-session cashReceived/changeDue — omit those lines. */
+  async function handleDownloadPdf() {
+    if (!detail) return;
+    setPdfBusy(true);
+    try {
+      await downloadSaleReceiptPdf(toSaleReceiptData(detail));
+      toast.success('Receipt downloaded');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download receipt');
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+  function handlePrintReceipt() {
+    if (!detail) return;
+    setPrintBusy(true);
+    try {
+      printSaleReceipt(toSaleReceiptData(detail), 'a4');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to open print dialog');
+    } finally {
+      setPrintBusy(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-slate-900/30 p-3 sm:items-center sm:p-4">
@@ -349,12 +383,20 @@ function SaleDetailModal({
                           </td>
                         </tr>
                       ) : (
-                        detail.items.map((item) => (
+                        detail.items.map((item) => {
+                          const qtyLabel = formatSaleItemQuantity(item);
+                          const baseHint = formatSaleItemBaseHint(item);
+                          return (
                           <tr key={item.id} className="border-t border-slate-50">
                             <td className="px-3 py-2.5 font-medium text-slate-800">
                               {item.productName}
                             </td>
-                            <td className="px-3 py-2.5 text-slate-600">{item.quantity}</td>
+                            <td className="px-3 py-2.5 text-slate-600">
+                              <span className="block">{qtyLabel}</span>
+                              {baseHint ? (
+                                <span className="block text-[11px] text-slate-400">{baseHint}</span>
+                              ) : null}
+                            </td>
                             <td className="px-3 py-2.5 text-slate-600">
                               {formatTzs(item.unitPrice)}
                             </td>
@@ -378,7 +420,8 @@ function SaleDetailModal({
                               </>
                             ) : null}
                           </tr>
-                        ))
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -464,14 +507,32 @@ function SaleDetailModal({
                 ) : null}
               </div>
 
-              <div className="flex justify-end border-t border-slate-100 pt-4">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
                 <button
                   type="button"
                   onClick={onBack}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to Sales
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfBusy || printBusy}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700 disabled:opacity-60"
+                >
+                  <Download className="h-4 w-4" />
+                  {pdfBusy ? 'Downloading…' : 'Download PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintReceipt}
+                  disabled={pdfBusy || printBusy}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  <Printer className="h-4 w-4" />
+                  {printBusy ? 'Opening…' : 'Print Receipt'}
                 </button>
               </div>
             </div>

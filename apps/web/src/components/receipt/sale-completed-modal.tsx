@@ -81,7 +81,19 @@ export function SaleCompletedModal({ completed, onNewSale, onClose }: SaleComple
     if (!receiptData) return;
     setPrintBusy(true);
     try {
-      printSaleReceipt(receiptData);
+      printSaleReceipt(receiptData, 'a4');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to open print dialog');
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
+  function handleThermalPrint(width: 'thermal58' | 'thermal80') {
+    if (!receiptData) return;
+    setPrintBusy(true);
+    try {
+      printSaleReceipt(receiptData, width);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to open print dialog');
     } finally {
@@ -194,6 +206,24 @@ export function SaleCompletedModal({ completed, onNewSale, onClose }: SaleComple
                 primary
               />
             </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleThermalPrint('thermal80')}
+                disabled={printBusy || !receiptData}
+                className="rounded-lg border border-slate-200 bg-white/70 px-2.5 py-1.5 text-[11px] font-medium text-slate-600 disabled:opacity-60"
+              >
+                Print 80mm
+              </button>
+              <button
+                type="button"
+                onClick={() => handleThermalPrint('thermal58')}
+                disabled={printBusy || !receiptData}
+                className="rounded-lg border border-slate-200 bg-white/70 px-2.5 py-1.5 text-[11px] font-medium text-slate-600 disabled:opacity-60"
+              >
+                Print 58mm
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -228,7 +258,23 @@ export function SaleCompletedModal({ completed, onNewSale, onClose }: SaleComple
                 disabled={printBusy}
                 className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-60"
               >
-                Print
+                Print A4
+              </button>
+              <button
+                type="button"
+                onClick={() => handleThermalPrint('thermal80')}
+                disabled={printBusy}
+                className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-60"
+              >
+                Print 80mm
+              </button>
+              <button
+                type="button"
+                onClick={() => handleThermalPrint('thermal58')}
+                disabled={printBusy}
+                className="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 disabled:opacity-60"
+              >
+                Print 58mm
               </button>
               <button
                 type="button"

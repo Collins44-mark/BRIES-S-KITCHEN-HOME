@@ -41,6 +41,12 @@ export type SaleItemDetail = {
   lineTotal: string;
   lineCost: string;
   lineProfit: string;
+  /** Snapshot at sale time; null for pre-multi-unit historical rows. */
+  productUnitId: string | null;
+  sellingUnitCode: string | null;
+  sellingUnitLabel: string | null;
+  conversionToBase: number | null;
+  baseQuantity: number | null;
 };
 
 export type SalePaymentDetail = {
@@ -115,6 +121,11 @@ type SaleItemRow = {
   line_total: string | number;
   line_cost: string | number;
   line_profit: string | number;
+  product_unit_id: string | null;
+  selling_unit_code: string | null;
+  selling_unit_label: string | null;
+  conversion_to_base: number | null;
+  base_quantity: number | null;
 };
 
 type SalePaymentRow = {
@@ -196,6 +207,57 @@ function cashierDisplayName(
   if (!cashier) return '—';
   const name = `${cashier.first_name ?? ''} ${cashier.last_name ?? ''}`.trim();
   return name || '—';
+}
+
+/** Physical base units for metrics — works for pre- and post-multi-unit rows. */
+export function saleItemBaseQuantity(item: {
+  quantity: number;
+  baseQuantity?: number | null;
+}): number {
+  if (item.baseQuantity != null && Number.isFinite(item.baseQuantity)) {
+    return item.baseQuantity;
+  }
+  return item.quantity;
+}
+
+export type FormatSaleItemQuantityInput = {
+  quantity: number;
+  sellingUnitCode?: string | null;
+  sellingUnitLabel?: string | null;
+  baseQuantity?: number | null;
+  /** Legacy products.unit when snapshot unit fields are null. */
+  legacyUnit?: string | null;
+};
+
+/**
+ * Display selling qty with unit snapshot. Never invents SET/PACK for legacy rows.
+ */
+export function formatSaleItemQuantity(item: FormatSaleItemQuantityInput): string {
+  const qty = item.quantity;
+  const label = item.sellingUnitLabel?.trim();
+  const code = item.sellingUnitCode?.trim();
+  if (label) return `${qty} ${label}`;
+  if (code) return `${qty} ${code}`;
+  const legacy = item.legacyUnit?.trim();
+  if (legacy) return `${qty} ${legacy}`;
+  return `${qty} base`;
+}
+
+/** Compact secondary line when base differs from selling qty or unit is multi. */
+export function formatSaleItemBaseHint(item: FormatSaleItemQuantityInput): string | null {
+  const base = saleItemBaseQuantity(item);
+  const code = item.sellingUnitCode?.trim();
+  const conversion =
+    item.baseQuantity != null && item.quantity > 0
+      ? Math.round(item.baseQuantity / item.quantity)
+      : null;
+  if (code && conversion != null && conversion > 1) {
+    return `= ${base} base`;
+  }
+  if (code && item.baseQuantity != null && item.baseQuantity !== item.quantity) {
+    return `= ${base} base`;
+  }
+  return null;
 }
 
 function toListItem(row: SaleRow): SaleListItem {
@@ -347,7 +409,12 @@ export async function getSaleById(id: string): Promise<SaleDetail> {
         discount_amount,
         line_total,
         line_cost,
-        line_profit
+        line_profit,
+        product_unit_id,
+        selling_unit_code,
+        selling_unit_label,
+        conversion_to_base,
+        base_quantity
       ),
       payments:payments (
         id,
@@ -397,6 +464,12 @@ export async function getSaleById(id: string): Promise<SaleDetail> {
         lineTotal: moneyString(item.line_total),
         lineCost: moneyString(item.line_cost),
         lineProfit: moneyString(item.line_profit),
+        productUnitId: item.product_unit_id ?? null,
+        sellingUnitCode: item.selling_unit_code ?? null,
+        sellingUnitLabel: item.selling_unit_label ?? null,
+        conversionToBase:
+          item.conversion_to_base == null ? null : Number(item.conversion_to_base),
+        baseQuantity: item.base_quantity == null ? null : Number(item.base_quantity),
       }),
     );
 
