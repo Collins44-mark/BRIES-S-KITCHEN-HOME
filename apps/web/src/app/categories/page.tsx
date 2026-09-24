@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import {
   createCategory,
   listCategories,
@@ -206,27 +207,25 @@ function CategoriesView() {
                     {c.is_active ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
-                <div className="mt-2.5 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditing(c);
-                    }}
-                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={toggleMutation.isPending}
-                    onClick={() =>
-                      toggleMutation.mutate({ id: c.id, isActive: !c.is_active })
-                    }
-                    className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
-                  >
-                    {c.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
+                <div className="mt-2.5 flex justify-end">
+                  <RowActionsMenu
+                    actions={[
+                      {
+                        label: 'Edit',
+                        onClick: () => {
+                          setShowForm(false);
+                          setEditing(c);
+                        },
+                      },
+                      {
+                        label: c.is_active ? 'Deactivate' : 'Activate',
+                        disabled: toggleMutation.isPending,
+                        tone: c.is_active ? 'danger' : 'default',
+                        onClick: () =>
+                          toggleMutation.mutate({ id: c.id, isActive: !c.is_active }),
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             ))}
@@ -261,27 +260,25 @@ function CategoriesView() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowForm(false);
-                            setEditing(c);
-                          }}
-                          className="text-sm font-medium text-sky-600 hover:text-sky-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          disabled={toggleMutation.isPending}
-                          onClick={() =>
-                            toggleMutation.mutate({ id: c.id, isActive: !c.is_active })
-                          }
-                          className="text-sm font-medium text-slate-600 hover:text-slate-800"
-                        >
-                          {c.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
+                      <div className="flex justify-end">
+                        <RowActionsMenu
+                          actions={[
+                            {
+                              label: 'Edit',
+                              onClick: () => {
+                                setShowForm(false);
+                                setEditing(c);
+                              },
+                            },
+                            {
+                              label: c.is_active ? 'Deactivate' : 'Activate',
+                              disabled: toggleMutation.isPending,
+                              tone: c.is_active ? 'danger' : 'default',
+                              onClick: () =>
+                                toggleMutation.mutate({ id: c.id, isActive: !c.is_active }),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

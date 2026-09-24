@@ -8,6 +8,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import { useAuth } from '@/contexts/auth-context';
 import {
   createCustomer,
@@ -353,35 +354,28 @@ function CustomersView() {
                     <span className="text-right">Paid: {formatTzs(c.totalPaid)}</span>
                   </div>
                 </button>
-                <div className="mt-2.5 flex flex-wrap gap-3">
-                  {canRecordPayment && Number(c.outstandingBalance) > 0 ? (
-                    <Link
-                      href={`/debts?customer=${c.id}`}
-                      className="min-h-10 text-sm font-medium text-emerald-700 hover:text-emerald-800"
-                    >
-                      Record Payment
-                    </Link>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditing(c);
-                    }}
-                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={toggleMutation.isPending}
-                    onClick={() =>
-                      toggleMutation.mutate({ id: c.id, isActive: !c.isActive })
-                    }
-                    className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
-                  >
-                    {c.isActive ? 'Deactivate' : 'Activate'}
-                  </button>
+                <div className="mt-2.5 flex justify-end">
+                  <RowActionsMenu
+                    actions={[
+                      canRecordPayment && Number(c.outstandingBalance) > 0
+                        ? { label: 'Record Payment', href: `/debts?customer=${c.id}` }
+                        : null,
+                      {
+                        label: 'Edit',
+                        onClick: () => {
+                          setShowForm(false);
+                          setEditing(c);
+                        },
+                      },
+                      {
+                        label: c.isActive ? 'Deactivate' : 'Activate',
+                        disabled: toggleMutation.isPending,
+                        tone: c.isActive ? 'danger' : 'default',
+                        onClick: () =>
+                          toggleMutation.mutate({ id: c.id, isActive: !c.isActive }),
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             ))}
@@ -447,35 +441,28 @@ function CustomersView() {
                       {formatTzs(c.outstandingBalance)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        {canRecordPayment && Number(c.outstandingBalance) > 0 ? (
-                          <Link
-                            href={`/debts?customer=${c.id}`}
-                            className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
-                          >
-                            Record Payment
-                          </Link>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowForm(false);
-                            setEditing(c);
-                          }}
-                          className="text-sm font-medium text-sky-600 hover:text-sky-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          disabled={toggleMutation.isPending}
-                          onClick={() =>
-                            toggleMutation.mutate({ id: c.id, isActive: !c.isActive })
-                          }
-                          className="text-sm font-medium text-slate-600 hover:text-slate-800"
-                        >
-                          {c.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
+                      <div className="flex justify-end">
+                        <RowActionsMenu
+                          actions={[
+                            canRecordPayment && Number(c.outstandingBalance) > 0
+                              ? { label: 'Record Payment', href: `/debts?customer=${c.id}` }
+                              : null,
+                            {
+                              label: 'Edit',
+                              onClick: () => {
+                                setShowForm(false);
+                                setEditing(c);
+                              },
+                            },
+                            {
+                              label: c.isActive ? 'Deactivate' : 'Activate',
+                              disabled: toggleMutation.isPending,
+                              tone: c.isActive ? 'danger' : 'default',
+                              onClick: () =>
+                                toggleMutation.mutate({ id: c.id, isActive: !c.isActive }),
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

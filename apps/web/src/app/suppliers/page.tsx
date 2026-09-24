@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import {
   createSupplier,
   listSuppliers,
@@ -260,27 +261,25 @@ function SuppliersView() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForm(false);
-                          setEditing(s);
-                        }}
-                        className="rounded-lg border border-slate-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-slate-700"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        disabled={toggleMutation.isPending}
-                        onClick={() =>
-                          toggleMutation.mutate({ id: s.id, isActive: !s.isActive })
-                        }
-                        className="rounded-lg border border-slate-200 bg-white/80 px-2.5 py-1 text-xs font-medium text-slate-700 disabled:opacity-60"
-                      >
-                        {s.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
+                    <div className="flex justify-end">
+                      <RowActionsMenu
+                        actions={[
+                          {
+                            label: 'Edit',
+                            onClick: () => {
+                              setShowForm(false);
+                              setEditing(s);
+                            },
+                          },
+                          {
+                            label: s.isActive ? 'Deactivate' : 'Activate',
+                            disabled: toggleMutation.isPending,
+                            tone: s.isActive ? 'danger' : 'default',
+                            onClick: () =>
+                              toggleMutation.mutate({ id: s.id, isActive: !s.isActive }),
+                          },
+                        ]}
+                      />
                     </div>
                   </td>
                 </tr>

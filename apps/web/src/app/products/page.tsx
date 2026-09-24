@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { AppShell } from '@/components/layout/app-shell';
 import { ProductUnitsModal } from '@/components/products/product-units-modal';
 import { TableEmptyRow, TableErrorRow, TableLoadingRow } from '@/components/ui/query-status';
-import { useAuth } from '@/contexts/auth-context';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import { listCategories } from '@/lib/supabase/categories';
 import {
   createProduct,
@@ -32,8 +32,6 @@ export default function ProductsPage() {
 function ProductsView() {
   const params = useSearchParams();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const canManageUnits = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'ALL'>('ALL');
@@ -407,43 +405,38 @@ function ProductsView() {
                   </div>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-400">{p.status}</p>
-                <div className="mt-2.5 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditing(p);
-                    }}
-                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUnitsProduct(p)}
-                    className="min-h-10 text-sm font-medium text-sky-600 hover:text-sky-700"
-                  >
-                    Units
-                  </button>
-                  {p.status === 'ACTIVE' ? (
-                    <button
-                      type="button"
-                      disabled={statusMutation.isPending}
-                      onClick={() => statusMutation.mutate({ id: p.id, status: 'INACTIVE' })}
-                      className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
-                    >
-                      Deactivate
-                    </button>
-                  ) : p.status !== 'DISCONTINUED' ? (
-                    <button
-                      type="button"
-                      disabled={statusMutation.isPending}
-                      onClick={() => statusMutation.mutate({ id: p.id, status: 'ACTIVE' })}
-                      className="min-h-10 text-sm font-medium text-slate-600 hover:text-slate-800"
-                    >
-                      Activate
-                    </button>
-                  ) : null}
+                <div className="mt-2.5 flex justify-end">
+                  <RowActionsMenu
+                    actions={[
+                      {
+                        label: 'Edit',
+                        onClick: () => {
+                          setShowForm(false);
+                          setEditing(p);
+                        },
+                      },
+                      {
+                        label: 'Units',
+                        onClick: () => setUnitsProduct(p),
+                      },
+                      p.status === 'ACTIVE'
+                        ? {
+                            label: 'Deactivate',
+                            disabled: statusMutation.isPending,
+                            tone: 'danger' as const,
+                            onClick: () =>
+                              statusMutation.mutate({ id: p.id, status: 'INACTIVE' }),
+                          }
+                        : p.status !== 'DISCONTINUED'
+                          ? {
+                              label: 'Activate',
+                              disabled: statusMutation.isPending,
+                              onClick: () =>
+                                statusMutation.mutate({ id: p.id, status: 'ACTIVE' }),
+                            }
+                          : null,
+                    ]}
+                  />
                 </div>
               </div>
             ))}
@@ -497,48 +490,38 @@ function ProductsView() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowForm(false);
-                            setEditing(p);
-                          }}
-                          className="text-sm font-medium text-sky-600 hover:text-sky-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setUnitsProduct(p)}
-                          className="text-sm font-medium text-sky-600 hover:text-sky-700"
-                          title={
-                            canManageUnits
-                              ? 'Manage selling units and wholesale tiers'
-                              : 'View selling units'
-                          }
-                        >
-                          Units
-                        </button>
-                        {p.status === 'ACTIVE' ? (
-                          <button
-                            type="button"
-                            disabled={statusMutation.isPending}
-                            onClick={() => statusMutation.mutate({ id: p.id, status: 'INACTIVE' })}
-                            className="text-sm font-medium text-slate-600 hover:text-slate-800"
-                          >
-                            Deactivate
-                          </button>
-                        ) : p.status !== 'DISCONTINUED' ? (
-                          <button
-                            type="button"
-                            disabled={statusMutation.isPending}
-                            onClick={() => statusMutation.mutate({ id: p.id, status: 'ACTIVE' })}
-                            className="text-sm font-medium text-slate-600 hover:text-slate-800"
-                          >
-                            Activate
-                          </button>
-                        ) : null}
+                      <div className="flex justify-end">
+                        <RowActionsMenu
+                          actions={[
+                            {
+                              label: 'Edit',
+                              onClick: () => {
+                                setShowForm(false);
+                                setEditing(p);
+                              },
+                            },
+                            {
+                              label: 'Units',
+                              onClick: () => setUnitsProduct(p),
+                            },
+                            p.status === 'ACTIVE'
+                              ? {
+                                  label: 'Deactivate',
+                                  disabled: statusMutation.isPending,
+                                  tone: 'danger' as const,
+                                  onClick: () =>
+                                    statusMutation.mutate({ id: p.id, status: 'INACTIVE' }),
+                                }
+                              : p.status !== 'DISCONTINUED'
+                                ? {
+                                    label: 'Activate',
+                                    disabled: statusMutation.isPending,
+                                    onClick: () =>
+                                      statusMutation.mutate({ id: p.id, status: 'ACTIVE' }),
+                                  }
+                                : null,
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
 import { useAuth } from '@/contexts/auth-context';
 import {
   PRODUCT_UNIT_CODES,
@@ -500,69 +501,50 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                         {formatTzs(unit.sellingPrice)}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExpandedUnitId(expanded ? null : unit.id);
-                          if (!expanded) {
-                            setEditingTier(null);
-                            setTierForm(emptyTierForm());
-                          }
-                        }}
-                        className="text-xs font-medium text-sky-600 hover:text-sky-700"
-                      >
-                        {expanded ? 'Hide wholesale' : 'Wholesale'}
-                      </button>
-                      {canManage && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => startEditUnit(unit)}
-                            className="text-xs font-medium text-sky-600 hover:text-sky-700"
-                          >
-                            Edit
-                          </button>
-                          {unit.isActive && !unit.isDefault && (
-                            <button
-                              type="button"
-                              disabled={defaultMutation.isPending}
-                              onClick={() => defaultMutation.mutate(unit.id)}
-                              className="text-xs font-medium text-slate-600 hover:text-slate-800"
-                            >
-                              Set default
-                            </button>
-                          )}
-                          {unit.isActive ? (
-                            <button
-                              type="button"
-                              disabled={activeMutation.isPending || unit.isDefault}
-                              title={
-                                unit.isDefault
-                                  ? 'Set another default before deactivating'
-                                  : undefined
+                    <div className="flex shrink-0 justify-end">
+                      <RowActionsMenu
+                        actions={[
+                          {
+                            label: expanded ? 'Hide wholesale' : 'Wholesale',
+                            onClick: () => {
+                              setExpandedUnitId(expanded ? null : unit.id);
+                              if (!expanded) {
+                                setEditingTier(null);
+                                setTierForm(emptyTierForm());
                               }
-                              onClick={() =>
-                                activeMutation.mutate({ unitId: unit.id, isActive: false })
+                            },
+                          },
+                          canManage
+                            ? {
+                                label: 'Edit',
+                                onClick: () => startEditUnit(unit),
                               }
-                              className="text-xs font-medium text-slate-600 hover:text-slate-800 disabled:opacity-40"
-                            >
-                              Deactivate
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={activeMutation.isPending}
-                              onClick={() =>
-                                activeMutation.mutate({ unitId: unit.id, isActive: true })
+                            : null,
+                          canManage && unit.isActive && !unit.isDefault
+                            ? {
+                                label: 'Set default',
+                                disabled: defaultMutation.isPending,
+                                onClick: () => defaultMutation.mutate(unit.id),
                               }
-                              className="text-xs font-medium text-slate-600 hover:text-slate-800"
-                            >
-                              Activate
-                            </button>
-                          )}
-                        </>
-                      )}
+                            : null,
+                          canManage
+                            ? unit.isActive
+                              ? {
+                                  label: 'Deactivate',
+                                  disabled: activeMutation.isPending || unit.isDefault,
+                                  tone: 'danger' as const,
+                                  onClick: () =>
+                                    activeMutation.mutate({ unitId: unit.id, isActive: false }),
+                                }
+                              : {
+                                  label: 'Activate',
+                                  disabled: activeMutation.isPending,
+                                  onClick: () =>
+                                    activeMutation.mutate({ unitId: unit.id, isActive: true }),
+                                }
+                            : null,
+                        ]}
+                      />
                     </div>
                   </div>
 
@@ -591,35 +573,31 @@ export function ProductUnitsModal({ productId, productName, onClose }: ProductUn
                               {!tier.isActive ? ' (inactive)' : ''}
                             </span>
                             {canManage && (
-                              <span className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingTier(tier);
-                                    setTierForm({
-                                      minQuantity: String(tier.minQuantity),
-                                      unitPrice: tier.unitPrice,
-                                    });
-                                    setExpandedUnitId(unit.id);
-                                  }}
-                                  className="font-medium text-sky-600"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={tierActiveMutation.isPending}
-                                  onClick={() =>
-                                    tierActiveMutation.mutate({
-                                      tierId: tier.id,
-                                      isActive: !tier.isActive,
-                                    })
-                                  }
-                                  className="font-medium text-slate-600"
-                                >
-                                  {tier.isActive ? 'Deactivate' : 'Activate'}
-                                </button>
-                              </span>
+                              <RowActionsMenu
+                                actions={[
+                                  {
+                                    label: 'Edit',
+                                    onClick: () => {
+                                      setEditingTier(tier);
+                                      setTierForm({
+                                        minQuantity: String(tier.minQuantity),
+                                        unitPrice: tier.unitPrice,
+                                      });
+                                      setExpandedUnitId(unit.id);
+                                    },
+                                  },
+                                  {
+                                    label: tier.isActive ? 'Deactivate' : 'Activate',
+                                    disabled: tierActiveMutation.isPending,
+                                    tone: tier.isActive ? 'danger' : 'default',
+                                    onClick: () =>
+                                      tierActiveMutation.mutate({
+                                        tierId: tier.id,
+                                        isActive: !tier.isActive,
+                                      }),
+                                  },
+                                ]}
+                              />
                             )}
                           </li>
                         ))}
